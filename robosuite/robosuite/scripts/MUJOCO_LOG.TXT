@@ -1,0 +1,6 @@
+Thu Jan 23 19:39:38 2020
+ERROR: Offscreen framebuffer is not complete, error 0x8cdd
+
+Tue Feb 11 10:42:31 2020
+ERROR: Invalid activation key
+

@@ -1,0 +1,7 @@
+__pycache__
+*.pyc
+data/
+models/
+.idea/
+checkpoints/
+logs/
