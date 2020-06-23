@@ -142,7 +142,7 @@ class Agent(BaseModel):
     self.memory.add(screen, reward, action, terminal)
 
     if self.step > self.learn_start:
-      if self.step % self.train_frequency == 0:
+      if (self.step+1) % self.train_frequency == 0:
         self.q_learning_mini_batch()
 
       if self.step % self.target_q_update_step == self.target_q_update_step - 1:

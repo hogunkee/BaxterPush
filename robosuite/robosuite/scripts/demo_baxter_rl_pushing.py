@@ -28,6 +28,7 @@ class BaxterEnv():
         self.grasp = None
         self.init_obj_pos = None
         self.obj_pos = None
+        self.target_pos = None
 
         self.action_size = 12
         self.render = render
@@ -51,18 +52,24 @@ class BaxterEnv():
             self.goal = arena_pos + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.025])
             while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < 0.08:
                 self.goal = arena_pos + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.025])
-        obj_id = self.env.sim.model.body_name2id("target")
-        self.env.model.worldbody.find("./body[@name='target']").set("pos", array_to_string(self.goal))    
+        # obj_id = self.env.sim.model.body_name2id("target")
+        # self.env.model.worldbody.find("./body[@name='target']").set("pos", array_to_string(self.goal))
 
         self.env.reset_arms(qpos=INIT_ARM_POS)        
         self.env.reset_sims()
         stucked = move_to_pos(self.env, [0.4, 0.6, 1.0], [0.4, -0.6, 1.0], arm='both', level=1.0, render=self.render)
         stucked = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9], self.state[9:12], arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=True)
 
-        obj_id = self.env.obj_body_id['CustomObject_0']
-        self.init_obj_pos = np.copy(self.env.sim.data.body_xpos[obj_id])
-        self.obj_pos = np.copy(self.env.sim.data.body_xpos[obj_id])
+        self.obj_id = self.env.obj_body_id['CustomObject_0']
+        self.init_obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
+        self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
+
+        if self.task == 'push':
+            self.target_id = self.env.obj_body_id['CustomObject_1']
+            self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
+
         self.state[6:9] = self.env._r_eef_xpos
+
 
         # GET CAMAERA IMAGE
         camera_obs = self.env.sim.render(
@@ -114,7 +121,7 @@ class BaxterEnv():
             mov_degree = (action - 2) * np.pi / 4.0
             self.state[6:9] = self.state[6:9] + np.array([mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree), 0.0])
         elif action == 10:
-            self.grasp = 1.0
+            self.grasp = 1.00
         elif action == 11:
             self.grasp = 0.0
 
@@ -122,10 +129,13 @@ class BaxterEnv():
         #obj_pos = self.env.sim.data.body_xpos[obj_id]
         stucked = move_to_6Dpos(self.env, None, None, self.state[6:9], self.state[9:12], arm='right', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=True)
         self.state[6:9] = self.env._r_eef_xpos
-        obj_id = self.env.obj_body_id['CustomObject_0']
-        self.obj_pos = np.copy(self.env.sim.data.body_xpos[obj_id])
+        # obj_id = self.env.obj_body_id['CustomObject_0']
+        self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
+        if self.task == 'push':
+            self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
 
-        vec = self.goal - self.state[6:9]
+        vec = self.target_pos - self.obj_pos
+        # vec = self.goal - self.state[6:9]
         if stucked==-1:
             reward = -10
             done = True
@@ -241,7 +251,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--seed', type=int, default=0)
     parser.add_argument(
-        '--num-objects', type=int, default=1)
+        '--num-objects', type=int, default=2)
     parser.add_argument(
         '--num-episodes', type=int, default=10000)
     parser.add_argument(

@@ -53,7 +53,7 @@ def main(_):
   parser.add_argument(
       '--seed', type=int, default=0)
   parser.add_argument(
-      '--num-objects', type=int, default=1)
+      '--num-objects', type=int, default=2)
   parser.add_argument(
       '--num-episodes', type=int, default=10000)
   parser.add_argument(
@@ -88,7 +88,7 @@ def main(_):
         control_freq=100
     )
     env = IKWrapper(env)
-    env = BaxterEnv(env, task='pick', render=args.render)
+    env = BaxterEnv(env, task='push', render=args.render)
 
     if not tf.test.is_gpu_available() and FLAGS.use_gpu:
       raise Exception("use_gpu flag is true when no GPUs are available")
@@ -105,71 +105,3 @@ def main(_):
 
 if __name__ == '__main__':
   tf.app.run()
-
-'''
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--seed', type=int, default=0)
-    parser.add_argument(
-        '--num-objects', type=int, default=1)
-    parser.add_argument(
-        '--num-episodes', type=int, default=10000)
-    parser.add_argument(
-        '--num-steps', type=int, default=1)
-    parser.add_argument(
-        '--render', type=bool, default=True)
-    parser.add_argument(
-        '--bin-type', type=str, default="table") # table, bin, two
-    parser.add_argument(
-        '--object-type', type=str, default="cube") # T, Tlarge, L, 3DNet, stick, round_T_large
-    parser.add_argument(
-        '--test', type=bool, default=False)
-    parser.add_argument(
-        '--config-file', type=str, default="config_example.yaml")
-    args = parser.parse_args()
-
-    np.random.seed(args.seed)
-
-    env = robosuite.make(
-        "BaxterPush",
-        bin_type=args.bin_type,
-        object_type=args.object_type,
-        ignore_done=True,
-        has_renderer=True,
-        camera_name="eye_on_right_wrist",
-        gripper_visualization=False,
-        use_camera_obs=False,
-        use_object_obs=False,
-        camera_depth=True,
-        num_objects=args.num_objects,
-        control_freq=100
-    )
-    env = IKWrapper(env)
-
-    render = args.render
-
-    cam_offset = np.array([0.05, 0, 0.15855])
-    #cam_offset = np.array([0.05755483, 0.0, 0.16810357])
-    right_arm_camera_id = env.sim.model.camera_name2id("eye_on_right_wrist")
-    left_arm_camera_id = env.sim.model.camera_name2id("eye_on_left_wrist")
-
-    arena_pos = env.env.mujoco_arena.bin_abs
-    init_pos = arena_pos + np.array([0.0, 0.0, 0.3])
-    init_obj_pos = arena_pos + np.array([0.0, 0.0, 0.0])
-    float_pos = arena_pos + np.array([0.0, 0.0, 0.3])
-
-    num_episodes = args.num_episodes
-    num_steps = args.num_steps
-    test = args.test
-    save_num = args.seed
-
-    rl_env = BaxterEnv(env, task='pick')
-
-    success_count, failure_count, controller_failure = 0, 0, 0
-    for i in  range(num_episodes):
-        state = rl_env.reset()
-        done = False
-        while not done:
-            state, reward, done, _ = rl_env.step(action)
-'''
