@@ -59,7 +59,7 @@ def main(_):
   parser.add_argument(
       '--num-steps', type=int, default=1)
   parser.add_argument(
-      '--render', type=bool, default=False ) #True
+      '--render', type=bool, default=False) #True
   parser.add_argument(
       '--bin-type', type=str, default="table")  # table, bin, two
   parser.add_argument(

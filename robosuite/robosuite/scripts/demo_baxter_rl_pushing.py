@@ -58,7 +58,7 @@ class BaxterEnv():
         self.env.reset_arms(qpos=INIT_ARM_POS)        
         self.env.reset_sims()
         stucked = move_to_pos(self.env, [0.4, 0.6, 1.0], [0.4, -0.6, 1.0], arm='both', level=1.0, render=self.render)
-        stucked = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9], self.state[9:12], arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=True)
+        stucked = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9], self.state[9:12], arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
 
         self.obj_id = self.env.obj_body_id['CustomObject_0']
         self.init_obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
@@ -127,7 +127,7 @@ class BaxterEnv():
 
         #obj_id = self.env.obj_body_id['CustomObject_0']
         #obj_pos = self.env.sim.data.body_xpos[obj_id]
-        stucked = move_to_6Dpos(self.env, None, None, self.state[6:9], self.state[9:12], arm='right', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=True)
+        stucked = move_to_6Dpos(self.env, None, None, self.state[6:9], self.state[9:12], arm='right', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
         self.state[6:9] = self.env._r_eef_xpos
         # obj_id = self.env.obj_body_id['CustomObject_0']
         self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
