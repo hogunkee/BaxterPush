@@ -1,0 +1,21 @@
+<!-- This is the base xml for all physics simulations. Set global configs here. -->
+<mujoco model="base">
+  <compiler angle="radian" meshdir="meshes/"/>
+  <option impratio="300" cone="elliptic">
+    <flag refsafe="enable"/>
+  </option>
+  <!--option gravity="0 0 0"/-->
+  <size nconmax="10000" njmax="10000"/>
+
+  <asset>
+  </asset>
+
+  <actuator>
+  </actuator>
+
+  <worldbody>
+  </worldbody>
+
+  <equality>
+  </equality>
+</mujoco>

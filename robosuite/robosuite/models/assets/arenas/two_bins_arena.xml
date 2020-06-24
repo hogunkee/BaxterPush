@@ -1,0 +1,61 @@
+<mujoco model="two_bins_arena">
+  <asset>
+    <texture builtin="gradient" height="256" rgb1=".9 .9 1." rgb2=".2 .3 .4" type="skybox" width="256"/>
+    <texture builtin="checker" height="512" name="texplane" rgb1=".2 .3 .4" rgb2=".1 0.15 0.2" type="2d" width="512"/>
+    <texture file="../textures/light-wood.png" type="2d" name="tex-light-wood"/>
+    <texture file="../textures/dark-wood.png" type="2d" name="tex-dark-wood"/>
+    <material name="light-wood" reflectance="0.5" texrepeat="15 15" texture="tex-light-wood" texuniform="true"/>
+    <material name="dark-wood" reflectance="0.5" texrepeat="5 5" texture="tex-dark-wood" texuniform="true"/>
+    <material name="floorplane" reflectance="0.5" texrepeat="1 1" texture="texplane" texuniform="true"/>
+  </asset>
+  <worldbody>
+    <!--geom condim="3" material="floorplane" name="floor" pos="0 0 0" size="3 3 .125" type="plane"/>
+    <geom rgba="0 0 0 0" pos="0.1 0.5 0.0" size="0.5 1 .2" type="plane"/-->
+    <geom condim="3" name="floor" pos="0 0 0" rgba="1 1 1 1" size="3 3 .125" type="plane"/>
+    <!--body name="extra_camera_link" pos="0.1 0.12 1.2">
+      <geom margin="0.001" type="cylinder" size="0.06 0.0825" rgba="0.1 0.1 0.1 1" pos="0 0 0" />
+      <camera mode="fixed" name="extra_camera" pos="-0.05 0 0.075" quat="0 1 -1 0"/>
+    </body-->
+    <body name="bin1" pos="0.0 0.12 0.57">
+      <geom pos="0 0 0" size="0.35 0.35 0.02" type="box" friction="0.3 0.3 0.1" rgba="0 0 0 1"/>
+      <geom pos="0 0 0" size="0.35 0.35 0.02" type="box" conaffinity="0" contype="0" group="1" rgba="0 0 0 1"/>
+    </body>
+    <!--body name="bin1" pos="0.0 -0.10 0.47">
+      <geom pos="0 0 0" size="0.20 0.20 0.02" type="box" friction="1.5 0.3 0.1" rgba="0 0 0 1"/>
+      <geom pos="0 0 0" size="0.20 0.20 0.02" type="box" conaffinity="0" contype="0" group="1" rgba="0 0 0 1"/>
+    </body-->
+    <body name="bin2" pos="0.0 0.71 0.67">
+      <!--geom pos="0 0 0" size="0.15 0.15 0.02" type="box" friction="1 0.005 0.0001" rgba="0 0 0 1"/>
+      <geom pos="0 0 0" size="0.15 0.15 0.02" type="box" conaffinity="0" contype="0" group="1" rgba="0 0 0 1"/-->
+    </body>
+
+    <body name="target" pos="0.0 0.12 0.59">
+      <joint armature="0" axis="1 0 0" damping="0" limited="true" name="target_x" pos="0 0 0" range="-.27 .27" ref=".1" stiffness="0" type="slide"/>
+      <joint armature="0" axis="0 1 0" damping="0" limited="true" name="target_y" pos="0 0 0" range="-.27 .27" ref="-.1" stiffness="0" type="slide"/>
+      <geom conaffinity="0" contype="0" name="target" pos="0 0 0" rgba="0.9 0.2 0.2 1" size=".009" type="sphere"/>
+    </body>
+
+    <!--body name="stick" pos="0.0 0.12 0.57"-->
+      <!--joint armature="0" axis="1 0 0" damping="0" limited="true" name="stick_x" pos="0 0 0" range="-.27 .27" ref=".1" stiffness="0" type="slide"/>
+      <joint armature="0" axis="0 1 0" damping="0" limited="true" name="stick_y" pos="0 0 0" range="-.27 .27" ref="-.1" stiffness="0" type="slide"/-->
+      <!--joint armature="0" axis="1 0 0" damping="0" limited="false" name="rootx" pos="0 0 0" stiffness="0" type="slide"/>
+      <joint armature="0" axis="0 0 1" damping="0" limited="false" name="rootz" pos="0 0 0" ref="1.25" stiffness="0" type="slide"/>
+      <joint armature="0" axis="0 1 0" damping="0" limited="false" name="rooty" pos="0 0 1.25" stiffness="0" type="hinge"/-->
+      <!--geom friction="0.9" fromto="0 0 1.45 0 0 1.05" name="torso_geom" size="0.05" type="capsule"/-->
+      <!--joint pos="0 0 0" type="free"/>
+      <geom pos="0 0 0" size="0.02 0.02 0.08" type="box" rgba="1 0 1 1"/>
+    </body-->
+
+    <light diffuse=".8 .8 .8" dir="0 -.15 -1" directional="false" pos="1 1 4.0" specular="0.3 0.3 0.3" castshadow="false"/>
+    <light diffuse=".8 .8 .8" dir="0 -.15 -1" directional="false" pos="-3. -3. 4.0" specular="0.3 0.3 0.3" castshadow="false"/>
+    <!-- front view -->
+    <camera mode="fixed" name="frontview" pos="1.6 0.4 1.45" quat="0.56 0.43 0.43 0.56"/>
+    <!-- bird view -->
+    <camera mode="fixed" name="birdview" pos="-0.2 0.4 3.0" quat="0.7071 0 0 0.7071"/>
+    <!-- agent view -->
+    <camera mode="fixed" name="agentview" pos="1.0 0.4 1.75" quat="0.653 0.271 0.271 0.653"/>
+
+    <camera mode="fixed" name="rlview1" pos="0.0 -0.88 1.57" quat="0.9238795325112867 0.3826834323650898 0 0"/>
+    <camera mode="fixed" name="rlview2" pos="1.0 0.12 1.57" quat="0.6532814824381883 0.2705980500730985 0.27059805007309845 0.6532814824381882"/>
+  </worldbody>
+</mujoco>

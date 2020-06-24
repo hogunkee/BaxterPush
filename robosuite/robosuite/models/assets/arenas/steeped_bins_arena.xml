@@ -1,0 +1,103 @@
+<mujoco model="steeped_bins_arena">
+  <asset>
+    <mesh scale="0.01 0.01 0.01" file="meshes/steeped_bins.obj/steeped_bins.obj_0.stl" name="steeped_bins.obj_0"/>
+    <mesh scale="0.01 0.01 0.01" file="meshes/steeped_bins.obj/steeped_bins.obj_1.stl" name="steeped_bins.obj_1"/>
+    <mesh scale="0.01 0.01 0.01" file="meshes/steeped_bins.obj/steeped_bins.obj_2.stl" name="steeped_bins.obj_2"/>
+    <mesh scale="0.01 0.01 0.01" file="meshes/steeped_bins.obj/steeped_bins.obj_3.stl" name="steeped_bins.obj_3"/>
+    <mesh scale="0.01 0.01 0.01" file="meshes/steeped_bins.obj/steeped_bins.obj_4.stl" name="steeped_bins.obj_4"/>
+    <mesh scale="0.01 0.01 0.01" file="meshes/steeped_bins.obj/steeped_bins.obj_5.stl" name="steeped_bins.obj_5"/>
+    <mesh scale="0.01 0.01 0.01" file="meshes/steeped_bins.obj/steeped_bins.obj_6.stl" name="steeped_bins.obj_6"/>
+    <mesh scale="0.01 0.01 0.01" file="meshes/steeped_bins.obj/steeped_bins.obj_7.stl" name="steeped_bins.obj_7"/>
+    <mesh scale="0.01 0.01 0.01" file="meshes/steeped_bins.obj/steeped_bins.obj_8.stl" name="steeped_bins.obj_8"/>
+    <mesh scale="0.01 0.01 0.01" file="meshes/steeped_bins.obj/steeped_bins.obj_9.stl" name="steeped_bins.obj_9"/>
+    <mesh scale="0.01 0.01 0.01" file="meshes/steeped_bins.obj/steeped_bins.obj_10.stl" name="steeped_bins.obj_10"/>
+    <mesh scale="0.01 0.01 0.01" file="meshes/steeped_bins.obj/steeped_bins.obj_11.stl" name="steeped_bins.obj_11"/>
+    <mesh scale="0.01 0.01 0.01" file="meshes/steeped_bins.obj/steeped_bins.obj_12.stl" name="steeped_bins.obj_12"/>
+    <texture builtin="gradient" height="256" rgb1=".9 .9 1." rgb2=".2 .3 .4" type="skybox" width="256"/>
+    <texture builtin="checker" height="512" name="texplane" rgb1=".2 .3 .4" rgb2=".1 0.15 0.2" type="2d" width="512"/>
+    <texture file="../textures/light-wood.png" type="2d" name="tex-light-wood"/>
+    <texture file="../textures/dark-wood.png" type="2d" name="tex-dark-wood"/>
+    <material name="light-wood" reflectance="0.5" texrepeat="15 15" texture="tex-light-wood" texuniform="true"/>
+    <material name="dark-wood" reflectance="0.5" texrepeat="5 5" texture="tex-dark-wood" texuniform="true"/>
+    <material name="floorplane" reflectance="0.5" texrepeat="1 1" texture="texplane" texuniform="true"/>
+  </asset>
+  <worldbody>
+    <geom condim="3" material="floorplane" name="floor" pos="0 0 0" size="3 3 .125" type="plane"/>
+    <geom rgba="0 0 0 0" pos="0.1 0.5 0.0" size="0.5 1 .2" type="plane"/>
+    <!--body name="extra_camera_link" pos="0.1 0.12 1.2">
+      <geom margin="0.001" type="cylinder" size="0.06 0.0825" rgba="0.1 0.1 0.1 1" pos="0 0 0" />
+      <camera mode="fixed" name="extra_camera" pos="-0.05 0 0.075" quat="0 1 -1 0"/>
+    </body-->
+    <!--body name="bin1" pos="0.0 0.12 0.67">
+      <geom pos="0 0 0" size="0.25 0.25 0.02" type="box" friction="1 0.005 0.0001"/>
+      <geom pos="0 0 0" material="light-wood" size="0.25 0.25 0.02" type="box" conaffinity="0" contype="0" group="1"/>
+        <geom pos="0.2 0 0.05" size="0.01 0.25 0.025" type="box" friction="1 0.005 0.0001" rgba="0 0 1 0"/>
+        <geom pos="0.2 0 0.05" size="0.01 0.25 0.025" type="box" conaffinity="0" contype="0" group="1" rgba="0 0 1 0" material="light-wood"/>
+    </body-->
+    <body name="bin1" pos="0.0 0.12 0.67">
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_0" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_0" conaffinity="0" contype="0" group="1" material="light-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_1" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_1" conaffinity="0" contype="0" group="1" material="light-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_2" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_2" conaffinity="0" contype="0" group="1" material="light-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_3" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_3" conaffinity="0" contype="0" group="1" material="light-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_4" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_4" conaffinity="0" contype="0" group="1" material="light-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_5" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_5" conaffinity="0" contype="0" group="1" material="light-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_6" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_6" conaffinity="0" contype="0" group="1" material="light-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_7" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_7" conaffinity="0" contype="0" group="1" material="light-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_8" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_8" conaffinity="0" contype="0" group="1" material="light-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_9" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_9" conaffinity="0" contype="0" group="1" material="light-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_10" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_10" conaffinity="0" contype="0" group="1" material="light-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_11" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_11" conaffinity="0" contype="0" group="1" material="light-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_12" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_12" conaffinity="0" contype="0" group="1" material="light-wood"/>
+    </body>
+    <body name="bin2" pos="0.0 0.71 0.47">
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_0" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_0" conaffinity="0" contype="0" group="1" material="dark-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_1" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_1" conaffinity="0" contype="0" group="1" material="dark-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_2" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_2" conaffinity="0" contype="0" group="1" material="dark-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_3" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_3" conaffinity="0" contype="0" group="1" material="dark-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_4" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_4" conaffinity="0" contype="0" group="1" material="dark-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_5" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_5" conaffinity="0" contype="0" group="1" material="dark-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_6" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_6" conaffinity="0" contype="0" group="1" material="dark-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_7" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_7" conaffinity="0" contype="0" group="1" material="dark-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_8" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_8" conaffinity="0" contype="0" group="1" material="dark-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_9" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_9" conaffinity="0" contype="0" group="1" material="dark-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_10" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_10" conaffinity="0" contype="0" group="1" material="dark-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_11" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_11" conaffinity="0" contype="0" group="1" material="dark-wood"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_12" friction="1.5 0.3 0.1" rgba="0 0 1 1"/>
+      <geom pos="0 0 0" type="mesh" mesh="steeped_bins.obj_12" conaffinity="0" contype="0" group="1" material="dark-wood"/>
+    </body>
+    <light diffuse=".8 .8 .8" dir="0 -.15 -1" directional="false" pos="1 1 4.0" specular="0.3 0.3 0.3" castshadow="false"/>
+    <light diffuse=".8 .8 .8" dir="0 -.15 -1" directional="false" pos="-3. -3. 4.0" specular="0.3 0.3 0.3" castshadow="false"/>
+    <!-- front view -->
+    <camera mode="fixed" name="frontview" pos="1.6 0.4 1.45" quat="0.56 0.43 0.43 0.56"/>
+    <!-- bird view -->
+    <camera mode="fixed" name="birdview" pos="-0.2 0.4 3.0" quat="0.7071 0 0 0.7071"/>
+    <!-- agent view -->
+    <camera mode="fixed" name="agentview" pos="1.0 0.4 1.75" quat="0.653 0.271 0.271 0.653"/>
+    <camera mode="fixed" name="extra_camera" pos="0.1 0.12 1.2" quat="0 0 0 1"/>
+  </worldbody>
+</mujoco>
