@@ -6,9 +6,12 @@ from dqn.agent import Agent
 from dqn.environment import GymEnvironment, SimpleGymEnvironment
 from config import get_config
 
+import os
 import sys
-sys.path.append('/home/gun/Desktop/BaxterPush/robosuite/robosuite/scripts')
-from robosuite.scripts.demo_baxter_rl_pushing import *
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(FILE_PATH, '../..'))
+sys.path.append(os.path.join(FILE_PATH, '..', 'scripts'))
+from demo_baxter_rl_pushing import *
 
 flags = tf.app.flags
 
