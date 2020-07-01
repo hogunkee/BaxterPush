@@ -70,6 +70,7 @@ class BaxterEnv():
         if self.task == 'push':
             self.target_id = self.env.obj_body_id['CustomObject_1']
             self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
+            self.pre_vec = self.target_pos - self.obj_pos
 
         self.state[6:9] = self.env._r_eef_xpos
 
@@ -139,11 +140,13 @@ class BaxterEnv():
 
         vec = self.target_pos - self.obj_pos
         # vec = self.goal - self.state[6:9]
-        if stucked==-1:
+
+        if stucked==-1 or 1-np.abs(self.env.env._right_hand_quat[1]) > 0.01:
             reward = -10
             done = True
         else:
-            reward = - np.linalg.norm(vec)
+            reward = - np.linalg.norm(vec) + np.linalg.norm(self.pre_vec)
+            self.pre_vec = vec
 
             if self.task == 'push':
                 if np.linalg.norm(vec) < 0.05:

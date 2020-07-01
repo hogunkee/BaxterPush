@@ -117,7 +117,7 @@ def move_to_6Dpos(env, t_pos_left, t_quat_left, grasp=0.0, level=1.0, render=Tru
             in_count = 0
         step_count += 1
 
-    print('move_to_6Dpos success!!')
+    print('fto_6Dpos success!!')
 
     return action_list
 

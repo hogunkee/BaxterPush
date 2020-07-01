@@ -214,7 +214,8 @@ class BaxterPush(BaxterEnv):
 
         lst = []
         for i in range(len(self.ob_inits)):
-            ob = self.ob_inits[i](self.object_type)
+            ob = self.ob_inits[i](self.object_type) if i==0 else self.ob_inits[i](self.object_type+str(i))
+            # ob = self.ob_inits[i](self.object_type)
             self.item_names.append(str(item_name_list[choice[i]]) + "_" + str(i))
             lst.append((str(item_name_list[choice[i]]) + "_" + str(i), ob))
 
