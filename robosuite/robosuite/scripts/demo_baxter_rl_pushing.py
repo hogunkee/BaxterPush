@@ -52,11 +52,14 @@ class BaxterEnv():
             self.goal = arena_pos + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.025])
             while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < 0.08:
                 self.goal = arena_pos + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.025])
+            target = self.env.model.worldbody.find("./body[@name='target']")
+            target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
         # obj_id = self.env.sim.model.body_name2id("target")
         # self.env.model.worldbody.find("./body[@name='target']").set("pos", array_to_string(self.goal))
 
-        self.env.reset_arms(qpos=INIT_ARM_POS)        
-        self.env.reset_sims()
+        self.env.reset()
+        # self.env.reset_sims()
+        # self.env.reset_arms(qpos=INIT_ARM_POS)
         stucked = move_to_pos(self.env, [0.4, 0.6, 1.0], [0.4, -0.6, 1.0], arm='both', level=1.0, render=self.render)
         stucked = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9], self.state[9:12], arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
 

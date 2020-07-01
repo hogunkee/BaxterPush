@@ -22,11 +22,22 @@ flags.DEFINE_boolean('double_q', False, 'Whether to use double q-learning')
 flags.DEFINE_integer('action_repeat', 1, 'The number of action to be repeated')
 
 # Etc
-flags.DEFINE_boolean('use_gpu', False, 'Whether to use gpu or not') # True
+flags.DEFINE_boolean('use_gpu', True, 'Whether to use gpu or not') # True
 flags.DEFINE_string('gpu_fraction', '1/1', 'idx / # of gpu fraction e.g. 1/3, 2/3, 3/3')
 flags.DEFINE_boolean('display', False, 'Whether to do display the game screen or not')
 flags.DEFINE_boolean('is_train', True, 'Whether to do training or testing')
 flags.DEFINE_integer('random_seed', 123, 'Value of random seed')
+
+# baxter configuration
+flags.DEFINE_integer('seed', 0, 'random seed')
+flags.DEFINE_integer('num_objects', 2, 'number of objects')
+flags.DEFINE_integer('num_episodes', 10000, 'number of episodes')
+flags.DEFINE_integer('num_steps', 1, 'number of steps')
+flags.DEFINE_boolean('render', True, 'Whether to do rendering or not')
+flags.DEFINE_string('bin_type', 'table', 'bin type')
+flags.DEFINE_string('object_type', 'cube', 'object type')
+flags.DEFINE_boolean('test', False, 'Test or not')
+flags.DEFINE_string('config_file', 'config_example.yaml', 'config file name')
 
 FLAGS = flags.FLAGS
 
@@ -46,40 +57,16 @@ def calc_gpu_fraction(fraction_string):
   return fraction
 
 def main(_):
-  # gpu_options = tf.GPUOptions(
-  #     per_process_gpu_memory_fraction=calc_gpu_fraction(FLAGS.gpu_fraction))
   gpu_config = tf.ConfigProto()
   gpu_config.gpu_options.allow_growth = True
 
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-      '--seed', type=int, default=0)
-  parser.add_argument(
-      '--num-objects', type=int, default=2)
-  parser.add_argument(
-      '--num-episodes', type=int, default=10000)
-  parser.add_argument(
-      '--num-steps', type=int, default=1)
-  parser.add_argument(
-      '--render', type=bool, default=True) #True
-  parser.add_argument(
-      '--bin-type', type=str, default="table")  # table, bin, two
-  parser.add_argument(
-      '--object-type', type=str, default="cube")  # T, Tlarge, L, 3DNet, stick, round_T_large
-  parser.add_argument(
-      '--test', type=bool, default=False)
-  parser.add_argument(
-      '--config-file', type=str, default="config_example.yaml")
-  args = parser.parse_args()
-
-  # with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
   with tf.Session(config=gpu_config) as sess:
     config = get_config(FLAGS) or FLAGS
 
     env = robosuite.make(
         "BaxterPush",
-        bin_type=args.bin_type,
-        object_type=args.object_type,
+        bin_type=FLAGS.bin_type,
+        object_type=FLAGS.object_type,
         ignore_done=True,
         has_renderer=True,
         camera_name="eye_on_right_wrist",
@@ -87,11 +74,11 @@ def main(_):
         use_camera_obs=False,
         use_object_obs=False,
         camera_depth=True,
-        num_objects=args.num_objects,
+        num_objects=FLAGS.num_objects,
         control_freq=100
     )
     env = IKWrapper(env)
-    env = BaxterEnv(env, task='push', render=args.render)
+    env = BaxterEnv(env, task='push', render=FLAGS.render)
 
     if not tf.test.is_gpu_available() and FLAGS.use_gpu:
       raise Exception("use_gpu flag is true when no GPUs are available")

@@ -1,5 +1,5 @@
 class AgentConfig(object):
-  scale = 10 #10000
+  scale = 100 #10000
   display = False
 
   max_step = 5000 * scale
@@ -10,8 +10,8 @@ class AgentConfig(object):
   cnn_format = 'NHWC' #'NCHW'
   discount = 0.99
   target_q_update_step = 1 * scale
-  learning_rate = 0.00025
-  learning_rate_minimum = 0.00025
+  learning_rate = 1e-4 #0.00025
+  learning_rate_minimum = 1e-6 #0.00025
   learning_rate_decay = 0.96
   learning_rate_decay_step = 5 * scale
 
