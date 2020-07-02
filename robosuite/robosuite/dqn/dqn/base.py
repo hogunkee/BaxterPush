@@ -1,6 +1,7 @@
 import os
 import pprint
 import inspect
+import datetime
 
 import tensorflow as tf
 
@@ -57,6 +58,8 @@ class BaseModel(object):
   @property
   def model_dir(self):
     model_dir = self.config.env_name
+    now = datetime.datetime.now()
+    model_dir += "/%s" %now.strftime("%m%d_%H%M%S")
     for k, v in self._attrs.items():
       if not k.startswith('_') and k not in ['display']:
         model_dir += "/%s-%s" % (k, ",".join([str(i) for i in v])
