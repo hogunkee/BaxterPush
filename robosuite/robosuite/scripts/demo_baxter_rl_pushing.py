@@ -74,41 +74,9 @@ class BaxterEnv():
 
         self.state[6:9] = self.env._r_eef_xpos
 
-
-        # GET CAMAERA IMAGE
-        camera_obs = self.env.sim.render(
-            camera_name="rlview1",
-            width=self.env.camera_width,
-            height=self.env.camera_height,
-            depth=self.env.camera_depth
-        )
-        rgb, ddd = camera_obs
-
-        extent = self.env.mjpy_model.stat.extent
-        near = self.env.mjpy_model.vis.map.znear * extent
-        far = self.env.mjpy_model.vis.map.zfar * extent
-
-        im_depth = near / (1 - ddd * (1 - near / far))
-        im_rgb = rgb
-        im_1 = np.concatenate((im_rgb, im_depth[..., np.newaxis]), axis=2)
-
-        camera_obs = self.env.sim.render(
-            camera_name="rlview2",
-            width=self.env.camera_width,
-            height=self.env.camera_height,
-            depth=self.env.camera_depth
-        )
-        rgb, ddd = camera_obs
-
-        extent = self.env.mjpy_model.stat.extent
-        near = self.env.mjpy_model.vis.map.znear * extent
-        far = self.env.mjpy_model.vis.map.zfar * extent
-
-        im_depth = near / (1 - ddd * (1 - near / far))
-        im_rgb = rgb
-        im_2 = np.concatenate((im_rgb, im_depth[..., np.newaxis]), axis=2)
-
+        im_1, im_2 = self.get_camera_obs()
         return [im_1, im_2]
+
 
     def step(self, action):
         # 1 0
@@ -134,18 +102,22 @@ class BaxterEnv():
         stucked = move_to_6Dpos(self.env, None, None, self.state[6:9], self.state[9:12], arm='right', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
         self.state[6:9] = self.env._r_eef_xpos
         # obj_id = self.env.obj_body_id['CustomObject_0']
-        self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
+        self.obj_pos = self.env.sim.data.body_xpos[self.obj_id]
+        # self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
         if self.task == 'push':
-            self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
+            self.target_pos = self.env.sim.data.body_xpos[self.target_id]
+            # self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
 
         vec = self.target_pos - self.obj_pos
         # vec = self.goal - self.state[6:9]
 
+        REWARD_SCALE = 10
         if stucked==-1 or 1-np.abs(self.env.env._right_hand_quat[1]) > 0.01:
-            reward = -10
+            reward = - REWARD_SCALE * np.min([np.linalg.norm(self.target_pos - self.state[6:9]), np.linalg.norm(self.obj_pos - self.state[6:9])])
+            # reward = -10
             done = True
         else:
-            reward = - np.linalg.norm(vec) + np.linalg.norm(self.pre_vec)
+            reward = REWARD_SCALE * ( - np.linalg.norm(vec) + np.linalg.norm(self.pre_vec) )
             self.pre_vec = vec
 
             if self.task == 'push':
@@ -161,6 +133,10 @@ class BaxterEnv():
                 else:
                     done = False
 
+        im_1, im_2 = self.get_camera_obs()
+        return [im_1, im_2], reward, done, {}
+
+    def get_camera_obs(self):
         # GET CAMAERA IMAGE
         camera_obs = self.env.sim.render(
             camera_name="rlview1",
@@ -177,6 +153,7 @@ class BaxterEnv():
         im_depth = near / (1 - ddd * (1 - near / far))
         im_rgb = rgb
         im_1 = np.concatenate((im_rgb, im_depth[..., np.newaxis]), axis=2)
+        im_1 = np.flip(im_1, axis=0)
 
         camera_obs = self.env.sim.render(
             camera_name="rlview2",
@@ -193,55 +170,10 @@ class BaxterEnv():
         im_depth = near / (1 - ddd * (1 - near / far))
         im_rgb = rgb
         im_2 = np.concatenate((im_rgb, im_depth[..., np.newaxis]), axis=2)
+        im_2 = np.flip(im_2, axis=0)
 
-        return [im_1, im_2], reward, done, {}
+        return [im_1, im_2]
 
-def get_camera_image(env, camera_pos, camera_rot_mat, arm='right', vis_on=False):
-
-    if arm == 'right':
-        camera_id = env.sim.model.camera_name2id("eye_on_right_wrist")
-        env.sim.data.cam_xpos[camera_id] = camera_pos
-        env.sim.data.cam_xmat[camera_id] = camera_rot_mat.flatten()
-
-        camera_obs = env.sim.render(
-            camera_name="eye_on_right_wrist",
-            width=env.camera_width,
-            height=env.camera_height,
-            depth=env.camera_depth
-        )
-        if env.camera_depth:
-            rgb, ddd = camera_obs
-
-    elif arm == 'left':
-        camera_id = env.sim.model.camera_name2id("eye_on_left_wrist")
-        env.sim.data.cam_xpos[camera_id] = camera_pos
-        env.sim.data.cam_xmat[camera_id] = camera_rot_mat.flatten()
-
-        camera_obs = env.sim.render(
-            camera_name="eye_on_left_wrist",
-            width=env.camera_width,
-            height=env.camera_height,
-            depth=env.camera_depth
-        )
-        if env.camera_depth:
-            rgb, ddd = camera_obs
-
-    extent = env.mjpy_model.stat.extent
-    near = env.mjpy_model.vis.map.znear * extent
-    far = env.mjpy_model.vis.map.zfar * extent
-
-    im_depth = near / (1 - ddd * (1 - near / far))
-    im_rgb = rgb
-    #im_depth = np.where(vertical_depth_image > 0.25, vertical_depth_image, 1)
-
-    if vis_on:
-        plt.imshow(np.flip(im_rgb, axis=0))
-        plt.show()
-
-        plt.imshow(np.flip(im_depth, axis=0), cmap='gray')
-        plt.show()
-
-    return np.flip(im_rgb, axis=0), np.flip(im_depth, axis=0)
 
 def random_quat():
     rand = np.random.rand(3)

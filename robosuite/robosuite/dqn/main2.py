@@ -36,7 +36,7 @@ flags.DEFINE_integer('seed', 0, 'random seed')
 flags.DEFINE_integer('num_objects', 2, 'number of objects')
 flags.DEFINE_integer('num_episodes', 10000, 'number of episodes')
 flags.DEFINE_integer('num_steps', 1, 'number of steps')
-flags.DEFINE_boolean('render', False, 'Whether to do rendering or not')
+flags.DEFINE_boolean('render', False, 'Whether to do rendering or not') #True
 flags.DEFINE_string('bin_type', 'table', 'bin type')
 flags.DEFINE_string('object_type', 'cube', 'object type')
 flags.DEFINE_boolean('test', False, 'Test or not')
@@ -78,7 +78,9 @@ def main(_):
         use_object_obs=False,
         camera_depth=True,
         num_objects=FLAGS.num_objects,
-        control_freq=100
+        control_freq=100,
+        camera_width=84,
+        camera_height=84
     )
     env = IKWrapper(env)
     env = BaxterEnv(env, task='push', render=FLAGS.render)
