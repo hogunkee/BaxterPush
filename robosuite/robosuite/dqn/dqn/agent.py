@@ -123,6 +123,96 @@ class Agent(BaseModel):
           ep_rewards = []
           actions = []
 
+  def demo_keyboard(self):
+    start_step = self.step_op.eval()
+    start_time = time.time()
+
+    num_game, self.update_count, ep_reward = 0, 0, 0.
+    total_reward, self.total_loss, self.total_q = 0., 0., 0.
+    max_avg_ep_reward = 0
+    ep_rewards, actions = [], []
+
+    screen = self.env.reset()
+    count_ep_steps = 0
+
+    for self.step in tqdm(range(start_step, self.max_step), ncols=70, initial=start_step):
+      if self.step == self.learn_start:
+        num_game, self.update_count, ep_reward = 0, 0, 0.
+        total_reward, self.total_loss, self.total_q = 0., 0., 0.
+        ep_rewards, actions = [], []
+
+      # 1. predict
+      action = int(input('\nnext action? '))
+      # action = self.predict(screen)
+      # 2. act
+      screen, reward, terminal, _ = self.env.step(action)
+      print('reward: ', reward)
+      screen = np.array(screen)
+      # screen, reward, terminal = self.env.act(action, is_training=True)
+      # 3. observe
+      self.observe(screen, reward, action, terminal)
+
+      if terminal:
+        ep_reward += reward
+        print('Episode done. - ep len:', count_ep_steps, '   ep reward:', ep_reward)
+        screen = self.env.reset()
+        count_ep_steps = 0
+        # screen, reward, action, terminal = self.env.new_random_game()
+
+        num_game += 1
+        ep_rewards.append(ep_reward)
+        ep_reward = 0.
+      else:
+        ep_reward += reward
+
+      actions.append(action)
+      total_reward += reward
+
+      if self.step >= self.learn_start:
+        if self.step % self.test_step == self.test_step - 1:
+          avg_reward = total_reward / self.test_step
+          avg_loss = self.total_loss / self.update_count
+          avg_q = self.total_q / self.update_count
+
+          try:
+            max_ep_reward = np.max(ep_rewards)
+            min_ep_reward = np.min(ep_rewards)
+            avg_ep_reward = np.mean(ep_rewards)
+          except:
+            max_ep_reward, min_ep_reward, avg_ep_reward = 0, 0, 0
+
+          print('\navg_r: %.4f, avg_l: %.6f, avg_q: %3.6f, avg_ep_r: %.4f, max_ep_r: %.4f, min_ep_r: %.4f, # game: %d' \
+              % (avg_reward, avg_loss, avg_q, avg_ep_reward, max_ep_reward, min_ep_reward, num_game))
+
+          if max_avg_ep_reward * 0.9 <= avg_ep_reward:
+            self.step_assign_op.eval({self.step_input: self.step + 1})
+            self.save_model(self.step + 1)
+
+            max_avg_ep_reward = max(max_avg_ep_reward, avg_ep_reward)
+
+          if self.step > 180:
+            self.inject_summary({
+                'average.reward': avg_reward,
+                'average.loss': avg_loss,
+                'average.q': avg_q,
+                'episode.max reward': max_ep_reward,
+                'episode.min reward': min_ep_reward,
+                'episode.avg reward': avg_ep_reward,
+                'episode.num of game': num_game,
+                'episode.rewards': ep_rewards,
+                'episode.actions': actions,
+                'training.learning_rate': self.learning_rate_op.eval({self.learning_rate_step: self.step}),
+              }, self.step)
+
+          num_game = 0
+          total_reward = 0.
+          self.total_loss = 0.
+          self.total_q = 0.
+          self.update_count = 0
+          ep_reward = 0.
+          ep_rewards = []
+          actions = []
+
   def predict(self, s_t, test_ep=None):
     ep = test_ep or (self.ep_end +
         max(0., (self.ep_start - self.ep_end)

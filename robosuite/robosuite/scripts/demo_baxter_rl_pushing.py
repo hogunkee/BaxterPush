@@ -121,7 +121,7 @@ class BaxterEnv():
             self.pre_vec = vec
 
             if self.task == 'push':
-                if np.linalg.norm(vec) < 0.05:
+                if np.linalg.norm(vec) < 0.10: #0.05
                     reward += 100
                     done = True
                 else:

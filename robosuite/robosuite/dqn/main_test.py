@@ -93,10 +93,7 @@ def main(_):
 
     agent = Agent(config, env, sess)
 
-    if FLAGS.is_train:
-      agent.train()
-    else:
-      agent.play()
+    agent.demo_keyboard()
 
 if __name__ == '__main__':
   tf.app.run()
