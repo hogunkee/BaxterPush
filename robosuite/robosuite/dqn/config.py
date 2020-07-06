@@ -1,5 +1,5 @@
 class AgentConfig(object):
-  scale = 100 #10000
+  scale = 10 #10000
   display = False
 
   max_step = 5000 * scale
@@ -21,7 +21,7 @@ class AgentConfig(object):
 
   # history_length = 4
   train_frequency = 4
-  learn_start = 5. * scale
+  learn_start = 1. * scale # 5.
 
   min_delta = -1
   max_delta = 1
