@@ -41,6 +41,7 @@ flags.DEFINE_string('bin_type', 'table', 'bin type')
 flags.DEFINE_string('object_type', 'cube', 'object type')
 flags.DEFINE_boolean('test', False, 'Test or not')
 flags.DEFINE_string('config_file', 'config_example.yaml', 'config file name')
+flags.DEFINE_string('model_name', None, 'name of trained model') #'0707_140753', '0707_145027'
 
 FLAGS = flags.FLAGS
 

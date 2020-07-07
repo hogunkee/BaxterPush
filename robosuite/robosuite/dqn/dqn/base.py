@@ -17,6 +17,9 @@ class BaseModel(object):
     self._saver = None
     self.config = config
 
+    now = datetime.datetime.now()
+    self.model_time = self.config.model_name if self.config.model_name else now.strftime("%m%d_%H%M%S")
+
     try:
       self._attrs = config.__dict__['__flags']
     except:
@@ -36,6 +39,14 @@ class BaseModel(object):
     if not os.path.exists(self.checkpoint_dir):
       os.makedirs(self.checkpoint_dir)
     self.saver.save(self.sess, self.checkpoint_dir, global_step=step)
+
+    cfg_str = ''
+    for k, v in self._attrs.items():
+      if not k.startswith('_') and k not in ['display']:
+        cfg_str += "/%s-%s" % (k, ",".join([str(i) for i in v])
+        if type(v) == list else v)
+    with open(os.path.join(self.checkpoint_dir, 'model_cfg.txt'), 'w') as f:
+      f.write(cfg_str)
 
   def load_model(self):
     print(" [*] Loading checkpoints...")
@@ -58,12 +69,11 @@ class BaseModel(object):
   @property
   def model_dir(self):
     model_dir = self.config.env_name
-    now = datetime.datetime.now()
-    model_dir += "/%s" %now.strftime("%m%d_%H%M%S")
-    for k, v in self._attrs.items():
-      if not k.startswith('_') and k not in ['display']:
-        model_dir += "/%s-%s" % (k, ",".join([str(i) for i in v])
-            if type(v) == list else v)
+    model_dir += "/%s" %self.model_time #now.strftime("%m%d_%H%M%S")
+    # for k, v in self._attrs.items():
+    #   if not k.startswith('_') and k not in ['display']:
+    #     model_dir += "/%s-%s" % (k, ",".join([str(i) for i in v])
+    #         if type(v) == list else v)
     return model_dir + '/'
 
   @property

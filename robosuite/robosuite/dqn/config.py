@@ -49,6 +49,7 @@ class M1(DQNConfig):
   backend = 'tf'
   env_type = 'detail'
   action_repeat = 1
+  model_name = None
 
 def get_config(FLAGS):
   if FLAGS.model == 'm1':
