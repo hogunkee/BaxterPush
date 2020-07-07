@@ -503,11 +503,11 @@ class Agent(BaseModel):
 
     # test_history = History(self.config)
 
-    if not self.display:
-      gym_dir = '/tmp/%s-%s' % (self.env_name, get_time())
-      self.env.env.monitor.start(gym_dir)
+    # if not self.display:
+    #   gym_dir = '/tmp/%s-%s' % (self.env_name, get_time())
+    #   self.env.env.monitor.start(gym_dir)
 
-    best_reward, best_idx = 0, 0
+    best_reward, best_idx = -100, 0
     for idx in range(n_episode):
       screen = self.env.reset()
       # screen, reward, action, terminal = self.env.new_random_game()
@@ -539,6 +539,6 @@ class Agent(BaseModel):
       print(" [%d] Best reward : %d" % (best_idx, best_reward))
       print("="*30)
 
-    if not self.display:
-      self.env.env.monitor.close()
-      #gym.upload(gym_dir, writeup='https://github.com/devsisters/DQN-tensorflow', api_key='')
+    # if not self.display:
+    #   self.env.env.monitor.close()
+    #   #gym.upload(gym_dir, writeup='https://github.com/devsisters/DQN-tensorflow', api_key='')

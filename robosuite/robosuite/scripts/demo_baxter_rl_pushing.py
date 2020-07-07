@@ -41,7 +41,7 @@ class BaxterEnv():
         init_pos = arena_pos + np.array([0.08, 0.0, 0.0]) + np.array([0.0, 0.0, 0.1])
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
-        self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.06])
+        self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16]) #0.06
 
         #self.goal = np.array([0.4, -0.6, 1.0]) + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3)
         if self.task == 'pick':

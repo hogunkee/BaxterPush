@@ -17,8 +17,8 @@ flags = tf.app.flags
 
 # Model
 flags.DEFINE_string('model', 'm1', 'Type of model')
-flags.DEFINE_boolean('dueling', False, 'Whether to use dueling deep q-network')
-flags.DEFINE_boolean('double_q', False, 'Whether to use double q-learning')
+flags.DEFINE_boolean('dueling', True, 'Whether to use dueling deep q-network')
+flags.DEFINE_boolean('double_q', True, 'Whether to use double q-learning')
 
 # Environment
 #flags.DEFINE_string('env_name', 'Breakout-v0', 'The name of gym environment to use')
@@ -36,12 +36,12 @@ flags.DEFINE_integer('seed', 0, 'random seed')
 flags.DEFINE_integer('num_objects', 2, 'number of objects')
 flags.DEFINE_integer('num_episodes', 10000, 'number of episodes')
 flags.DEFINE_integer('num_steps', 1, 'number of steps')
-flags.DEFINE_boolean('render', True, 'Whether to do rendering or not') #True
+flags.DEFINE_boolean('render', False, 'Whether to do rendering or not') #True
 flags.DEFINE_string('bin_type', 'table', 'bin type')
 flags.DEFINE_string('object_type', 'cube', 'object type')
 flags.DEFINE_boolean('test', False, 'Test or not')
 flags.DEFINE_string('config_file', 'config_example.yaml', 'config file name')
-flags.DEFINE_string('model_name', '0707_145027', 'name of trained model') #'0707_140753', '0707_145027'
+flags.DEFINE_string('model_name', None, 'name of trained model') #'0707_140753', '0707_145027'
 
 FLAGS = flags.FLAGS
 
@@ -80,8 +80,8 @@ def main(_):
         camera_depth=True,
         num_objects=FLAGS.num_objects,
         control_freq=100,
-        camera_width=84,
-        camera_height=84
+        camera_width=config.screen_width,
+        camera_height=config.screen_height
     )
     env = IKWrapper(env)
     env = BaxterEnv(env, task='push', render=FLAGS.render)
@@ -94,7 +94,7 @@ def main(_):
 
     agent = Agent(config, env, sess)
 
-    if FLAGS.is_train:
+    if FLAGS.is_train and not FLAGS.test:
       agent.train()
     else:
       agent.play()
