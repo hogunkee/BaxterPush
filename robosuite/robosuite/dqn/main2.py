@@ -36,12 +36,12 @@ flags.DEFINE_integer('seed', 0, 'random seed')
 flags.DEFINE_integer('num_objects', 2, 'number of objects')
 flags.DEFINE_integer('num_episodes', 10000, 'number of episodes')
 flags.DEFINE_integer('num_steps', 1, 'number of steps')
-flags.DEFINE_boolean('render', False, 'Whether to do rendering or not') #True
+flags.DEFINE_boolean('render', True, 'Whether to do rendering or not') #True
 flags.DEFINE_string('bin_type', 'table', 'bin type')
 flags.DEFINE_string('object_type', 'cube', 'object type')
 flags.DEFINE_boolean('test', False, 'Test or not')
 flags.DEFINE_string('config_file', 'config_example.yaml', 'config file name')
-flags.DEFINE_string('model_name', None, 'name of trained model') #'0707_140753', '0707_145027'
+flags.DEFINE_string('model_name', '0707_145027', 'name of trained model') #'0707_140753', '0707_145027'
 
 FLAGS = flags.FLAGS
 
