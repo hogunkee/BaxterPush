@@ -42,7 +42,7 @@ class ReplayMemory:
     self.current = (self.current + 1) % self.memory_size
 
   def getState(self, index):
-    assert self.count > 0, "replay memory is empy, use at least --random_steps 1"
+    assert self.count > 0, "replay memory is empty, use at least --random_steps 1"
     # normalize index to expected range, allows negative indexes
     index = index % self.count
     # if is not in the beginning of matrix
@@ -68,8 +68,8 @@ class ReplayMemory:
         # sample one index (ignore states wraping over 
         index = random.randint(0, self.count - 1)
         # if wraps over current pointer, then get new one
-        if index >= self.current: # and index - self.history_length < self.current:
-          continue
+        # if index >= self.current: # and index - self.history_length < self.current:
+        #  continue
         # if wraps over episode end, then get new one
         # NB! poststate (last screen) can be terminal state!
         # if self.terminals[(index - self.history_length):index].any():
