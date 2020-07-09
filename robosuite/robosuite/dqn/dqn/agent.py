@@ -278,7 +278,7 @@ class Agent(BaseModel):
     self.t_w = {}
 
     #initializer = tf.contrib.layers.xavier_initializer()
-    initializer = tf.truncated_normal_initializer(0, 0.02)
+    initializer = tf.truncated_normal_initializer(0, 0.1) #0.02)
     activation_fn = tf.nn.relu
 
     # training network

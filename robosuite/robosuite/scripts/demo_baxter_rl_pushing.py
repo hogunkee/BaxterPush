@@ -113,11 +113,11 @@ class BaxterEnv():
 
         REWARD_SCALE = 10
         if stucked==-1 or 1-np.abs(self.env.env._right_hand_quat[1]) > 0.01:
-            reward = - REWARD_SCALE * np.min([np.linalg.norm(self.target_pos - self.state[6:9]), np.linalg.norm(self.obj_pos - self.state[6:9])])
+            reward = - 5 - REWARD_SCALE * np.min([np.linalg.norm(self.target_pos - self.state[6:9]), np.linalg.norm(self.obj_pos - self.state[6:9])])
             # reward = -10
             done = True
         else:
-            reward = REWARD_SCALE * ( - np.linalg.norm(vec) + np.linalg.norm(self.pre_vec) )
+            reward = REWARD_SCALE * (np.exp( - np.linalg.norm(vec) + np.linalg.norm(self.pre_vec)) - 1) - 0.1
             self.pre_vec = vec
 
             if self.task == 'push':

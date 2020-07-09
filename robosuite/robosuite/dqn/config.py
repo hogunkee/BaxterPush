@@ -1,17 +1,17 @@
 class AgentConfig(object):
-  scale = 100 #10000
+  scale = 20 #10000
   display = False
 
   max_step = 5000 * scale
   memory_size = 100 * scale
 
-  batch_size = 32
+  batch_size = 128
   random_start = 30
   cnn_format = 'NHWC' #'NCHW'
   discount = 0.99
   target_q_update_step = 1 * scale
-  learning_rate = 1e-4 #0.00025
-  learning_rate_minimum = 1e-6 #0.00025
+  learning_rate = 0.00025 #1e-4 #
+  learning_rate_minimum = 0.00025 #1e-6
   learning_rate_decay = 0.96
   learning_rate_decay_step = 5 * scale
 
@@ -29,8 +29,8 @@ class AgentConfig(object):
   double_q = False
   dueling = False
 
-  _test_step = 5 * scale
-  _save_step = _test_step * 10
+  _test_step = scale #5 * scale
+  _save_step = _test_step * 5 #10
 
 class EnvironmentConfig(object):
   env_name = 'BaxterPush'
