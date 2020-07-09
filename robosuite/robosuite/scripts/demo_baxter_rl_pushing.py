@@ -66,11 +66,13 @@ class BaxterEnv():
         self.obj_id = self.env.obj_body_id['CustomObject_0']
         self.init_obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
         self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
+        self.pre_obj_pos = self.obj_pos
 
         if self.task == 'push':
             self.target_id = self.env.obj_body_id['CustomObject_1']
             self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
             self.pre_vec = self.target_pos - self.obj_pos
+            self.pre_target_pos = self.target_pos
 
         self.state[6:9] = self.env._r_eef_xpos
 
@@ -102,22 +104,28 @@ class BaxterEnv():
         stucked = move_to_6Dpos(self.env, None, None, self.state[6:9], self.state[9:12], arm='right', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
         self.state[6:9] = self.env._r_eef_xpos
         # obj_id = self.env.obj_body_id['CustomObject_0']
+        self.pre_obj_pos = self.obj_pos
         self.obj_pos = self.env.sim.data.body_xpos[self.obj_id]
         # self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
         if self.task == 'push':
+            self.pre_target_pos = self.target_pos
             self.target_pos = self.env.sim.data.body_xpos[self.target_id]
             # self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
 
         vec = self.target_pos - self.obj_pos
         # vec = self.goal - self.state[6:9]
 
-        REWARD_SCALE = 10
+        C1 = 10
+        C2 = 5
         if stucked==-1 or 1-np.abs(self.env.env._right_hand_quat[1]) > 0.01:
-            reward = - 5 - REWARD_SCALE * np.min([np.linalg.norm(self.target_pos - self.state[6:9]), np.linalg.norm(self.obj_pos - self.state[6:9])])
+            reward = - 5 - C1 * np.min([np.linalg.norm(self.target_pos - self.state[6:9]), np.linalg.norm(self.obj_pos - self.state[6:9])])
             # reward = -10
             done = True
         else:
-            reward = REWARD_SCALE * (np.exp( - np.linalg.norm(vec) + np.linalg.norm(self.pre_vec)) - 1) - 0.1
+            distance_reward = np.exp( - np.linalg.norm(vec) + np.linalg.norm(self.pre_vec)) - 1
+            touching_reward = np.linalg.norm(self.obj_pos - self.pre_obj_pos) + np.linalg.norm(self.target_pos - self.pre_target_pos)
+            step_penalty = 0.1
+            reward = C1 * distance_reward + C2 * touching_reward - step_penalty
             self.pre_vec = vec
 
             if self.task == 'push':

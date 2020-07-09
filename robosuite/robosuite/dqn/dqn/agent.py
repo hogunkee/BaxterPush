@@ -41,6 +41,7 @@ class Agent(BaseModel):
 
     screen = self.env.reset()
     count_ep_steps = 0
+
     # screen, reward, action, terminal = self.env.new_random_game()
 
     # for _ in range(self.history_length):

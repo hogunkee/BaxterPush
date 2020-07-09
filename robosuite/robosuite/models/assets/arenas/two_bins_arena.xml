@@ -55,7 +55,7 @@
     <!-- agent view -->
     <camera mode="fixed" name="agentview" pos="1.0 0.4 1.75" quat="0.653 0.271 0.271 0.653"/>
 
-    <camera mode="fixed" name="rlview1" pos="0.0 -0.88 1.57" quat="0.9238795325112867 0.3826834323650898 0 0"/>
+    <camera mode="fixed" name="rlview1" pos="-0.1 -0.88 1.57" quat="0.9238795325112867 0.3826834323650898 0 0"/>
     <camera mode="fixed" name="rlview2" pos="1.0 0.12 1.57" quat="0.6532814824381883 0.2705980500730985 0.27059805007309845 0.6532814824381882"/>
   </worldbody>
 </mujoco>
