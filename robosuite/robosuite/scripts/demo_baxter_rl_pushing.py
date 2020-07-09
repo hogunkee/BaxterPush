@@ -121,6 +121,7 @@ class BaxterEnv():
             reward = - 5 - C1 * np.min([np.linalg.norm(self.target_pos - self.state[6:9]), np.linalg.norm(self.obj_pos - self.state[6:9])])
             # reward = -10
             done = True
+            print('episode done. [STUCKED]')
         else:
             distance_reward = np.exp( - np.linalg.norm(vec) + np.linalg.norm(self.pre_vec)) - 1
             touching_reward = np.linalg.norm(self.obj_pos - self.pre_obj_pos) + np.linalg.norm(self.target_pos - self.pre_target_pos)
@@ -132,6 +133,7 @@ class BaxterEnv():
                 if np.linalg.norm(vec) < 0.10: #0.05
                     reward += 100
                     done = True
+                    print('episode done. [SUCCESS]')
                 else:
                     done = False
             elif self.task == 'pick':

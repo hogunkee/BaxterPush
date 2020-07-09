@@ -159,7 +159,7 @@ def move_to_6Dpos(env, t_pos_left, t_angle_left, t_pos_right, t_angle_right, arm
                 print('pos:', obs['left_eef_pos'],', tpos: ', t_pos)
             elif arm == 'right':
                 print('pos:', obs['right_eef_pos'],', tpos: ', t_pos)'''
-            print("Stucked!")
+            #print("Stucked!")
             #print('Stucked! reset the arms.')
             #env.env.reset_arms(qpos=INIT_ARM_POS)
             #env.env.sim.forward()
@@ -173,7 +173,7 @@ def move_to_6Dpos(env, t_pos_left, t_angle_left, t_pos_right, t_angle_right, arm
             in_count = 0
         step_count += 1
 
-    print('move_to_6Dpos success!!')
+    #print('move_to_6Dpos success!!')
 
     return action_list
 
