@@ -4,7 +4,7 @@ from ppo.history import *
 
 
 class Trainer(object):
-    def __init__(self, ppo_model, sess, info, is_continuous, use_observations, use_states, training):
+    def __init__(self, ppo_model, sess, is_continuous, use_observations, use_states, training):
         """
         Responsible for collecting experiences and training PPO model.
         :param ppo_model: Tensorflow graph defining model.
@@ -19,7 +19,7 @@ class Trainer(object):
                  'entropy': [], 'value_loss': [], 'policy_loss': [], 'learning_rate': []}
         self.stats = stats
         self.is_training = training
-        self.reset_buffers(info, total=True)
+        self.reset_buffers({'ppo': None}, total=True)
         self.training_buffer = vectorize_history(empty_local_history({}))
         self.is_continuous = is_continuous
         self.use_observations = use_observations

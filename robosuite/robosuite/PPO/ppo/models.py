@@ -16,15 +16,16 @@ def create_agent_model(env, lr=1e-4, h_size=128, epsilon=0.2, beta=1e-3, max_ste
     :return: a sub-class of PPOAgent tailored to the environment.
     :param max_step: Total number of training steps.
     """
-    if num_layers < 1:
-        num_layers = 1
-
-    brain_name = env.brain_names[0]
-    brain = env.brains[brain_name]
-    if brain.action_space_type == "continuous":
-        return ContinuousControlModel(lr, brain, h_size, epsilon, max_step, normalize, num_layers)
-    if brain.action_space_type == "discrete":
-        return DiscreteControlModel(lr, brain, h_size, epsilon, beta, max_step, normalize, num_layers)
+    return DiscreteControlModel(lr, env, h_size, epsilon, beta, max_step, normalize, num_layers)
+    # if num_layers < 1:
+    #     num_layers = 1
+    #
+    # brain_name = env.brain_names[0]
+    # brain = env.brains[brain_name]
+    # if brain.action_space_type == "continuous":
+    #     return ContinuousControlModel(lr, brain, h_size, epsilon, max_step, normalize, num_layers)
+    # if brain.action_space_type == "discrete":
+    #     return DiscreteControlModel(lr, brain, h_size, epsilon, beta, max_step, normalize, num_layers)
 
 
 def save_model(sess, saver, model_path="./", steps=0):
@@ -73,7 +74,7 @@ class PPOModel(object):
         self.new_reward = tf.placeholder(shape=[], dtype=tf.float32, name='new_reward')
         self.update_reward = tf.assign(self.last_reward, self.new_reward)
 
-    def _create_visual_encoder(self, o_size_h, o_size_w, bw, h_size, num_streams, activation, num_layers):
+    def _create_visual_encoder(self, o_size_h, o_size_w, rgbd, h_size, num_streams, activation, num_layers):
         """
         Builds a set of visual (CNN) encoders.
         :param o_size_h: Height observation size.
@@ -84,16 +85,16 @@ class PPOModel(object):
         :param activation: What type of activation function to use for layers.
         :return: List of hidden layer tensors.
         """
-        if bw:
-            c_channels = 1
+        if rgbd:
+            c_channels = 4
         else:
             c_channels = 3
 
-        self.observation_in = tf.placeholder(shape=[None, o_size_h, o_size_w, c_channels], dtype=tf.float32,
-                                             name='observation_0')
+        self.observation_in = [tf.placeholder(shape=[None, o_size_h, o_size_w, c_channels], dtype=tf.float32,
+                                             name='observation_0') for i in range(num_streams)]
         streams = []
         for i in range(num_streams):
-            self.conv1 = tf.layers.conv2d(self.observation_in, 16, kernel_size=[8, 8], strides=[4, 4],
+            self.conv1 = tf.layers.conv2d(self.observation_in[i], 16, kernel_size=[8, 8], strides=[4, 4],
                                           use_bias=False, activation=activation)
             self.conv2 = tf.layers.conv2d(self.conv1, 32, kernel_size=[4, 4], strides=[2, 2],
                                           use_bias=False, activation=activation)
@@ -269,7 +270,7 @@ class ContinuousControlModel(PPOModel):
 
 
 class DiscreteControlModel(PPOModel):
-    def __init__(self, lr, brain, h_size, epsilon, beta, max_step, normalize, num_layers):
+    def __init__(self, lr, env, h_size, epsilon, beta, max_step, normalize, num_layers):
         """
         Creates Discrete Control Actor-Critic model.
         :param brain: State-space size
@@ -281,29 +282,30 @@ class DiscreteControlModel(PPOModel):
         self.normalize = normalize
 
         hidden_state, hidden_visual, hidden = None, None, None
-        if brain.number_observations > 0:
-            height_size, width_size = brain.camera_resolutions[0]['height'], brain.camera_resolutions[0]['width']
-            bw = brain.camera_resolutions[0]['blackAndWhite']
-            hidden_visual = self._create_visual_encoder(height_size, width_size, bw, h_size, 1, tf.nn.elu, num_layers)[
-                0]
-        if brain.state_space_size > 0:
-            s_size = brain.state_space_size
-            if brain.state_space_type == "continuous":
-                hidden_state = self._create_continuous_state_encoder(s_size, h_size, 1, tf.nn.elu, num_layers)[0]
-            else:
-                hidden_state = self._create_discrete_state_encoder(s_size, h_size, 1, tf.nn.elu, num_layers)[0]
+        # if brain.number_observations > 0:
+        height_size, width_size = env.env.env.camera_height, env.env.env.camera_width
+        rgbd = True # means color image
+        hidden_visual = self._create_visual_encoder(height_size, width_size, rgbd, h_size, 2, tf.nn.elu, num_layers)
 
-        if hidden_visual is None and hidden_state is None:
-            raise Exception("No valid network configuration possible. "
-                            "There are no states or observations in this brain")
-        elif hidden_visual is not None and hidden_state is None:
-            hidden = hidden_visual
-        elif hidden_visual is None and hidden_state is not None:
-            hidden = hidden_state
-        elif hidden_visual is not None and hidden_state is not None:
-            hidden = tf.concat([hidden_visual, hidden_state], axis=1)
+        hidden = tf.concat(hidden_visual, axis=1)
+        # if brain.state_space_size > 0:
+        #     s_size = brain.state_space_size
+        #     if brain.state_space_type == "continuous":
+        #         hidden_state = self._create_continuous_state_encoder(s_size, h_size, 1, tf.nn.elu, num_layers)[0]
+        #     else:
+        #         hidden_state = self._create_discrete_state_encoder(s_size, h_size, 1, tf.nn.elu, num_layers)[0]
 
-        a_size = brain.action_space_size
+        # if hidden_visual is None and hidden_state is None:
+        #     raise Exception("No valid network configuration possible. "
+        #                     "There are no states or observations in this brain")
+        # elif hidden_visual is not None and hidden_state is None:
+        #     hidden = hidden_visual
+        # elif hidden_visual is None and hidden_state is not None:
+        #     hidden = hidden_state
+        # elif hidden_visual is not None and hidden_state is not None:
+        #     hidden = tf.concat([hidden_visual, hidden_state], axis=1)
+
+        a_size = env.action_size
 
         self.batch_size = tf.placeholder(shape=None, dtype=tf.int32, name='batch_size')
         self.policy = tf.layers.dense(hidden, a_size, activation=None, use_bias=False,
