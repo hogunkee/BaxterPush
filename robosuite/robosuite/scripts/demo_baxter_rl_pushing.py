@@ -138,7 +138,7 @@ class BaxterEnv():
         else:
             distance_reward = np.exp( - np.linalg.norm(vec) + np.linalg.norm(self.pre_vec)) - 1
             touching_reward = np.linalg.norm(self.obj_pos - self.pre_obj_pos) + np.linalg.norm(self.target_pos - self.pre_target_pos)
-            step_penalty = 0.1
+            step_penalty = 0.0 #0.1
             reward = C1 * distance_reward + C2 * touching_reward - step_penalty
             self.pre_vec = vec
 
