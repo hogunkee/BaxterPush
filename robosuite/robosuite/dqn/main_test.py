@@ -79,8 +79,8 @@ def main(_):
         camera_depth=True,
         num_objects=FLAGS.num_objects,
         control_freq=100,
-        camera_width=84,
-        camera_height=84
+        camera_width=64,
+        camera_height=64
     )
     env = IKWrapper(env)
     env = BaxterEnv(env, task='push', render=FLAGS.render)

@@ -64,7 +64,7 @@ class BaseModel(object):
 
   @property
   def checkpoint_dir(self):
-    return os.path.join('checkpoints', self.model_dir)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'checkpoints', self.model_dir)
 
   @property
   def model_dir(self):

@@ -20,7 +20,7 @@ INIT_ARM_POS = [0.40933302, -1.24377906, 0.68787495, 2.03907987, -0.27229507, 0.
 from gym import spaces
 
 class BaxterEnv():
-    def __init__(self, env, task='push', render=True):
+    def __init__(self, env, task='push', render=True, using_feature=False):
         self.env = env
         self.task = task # 'push' or 'pick'
         self.action_space = spaces.Discrete(12)
@@ -32,13 +32,15 @@ class BaxterEnv():
 
         self.action_size = 12
         self.render = render
+        self.using_feature = using_feature
 
     def reset(self):
         arena_pos = self.env.env.mujoco_arena.bin_abs
         self.state = np.array([0.4, 0.6, 1.0, 0.0, 0.0, 0.0, 0.4, -0.6, 1.0, 0.0, 0.0, 0.0])
         self.grasp = 0.0
-        #init_pos = arena_pos + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])
-        init_pos = arena_pos + np.array([0.08, 0.0, 0.0]) + np.array([0.0, 0.0, 0.1])
+        init_pos = arena_pos + np.array([0.3, 0.3, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])
+        # init_pos = arena_pos + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])
+        # init_pos = arena_pos + np.array([0.08, 0.0, 0.0]) + np.array([0.0, 0.0, 0.1])
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
         self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16]) #0.06
@@ -49,11 +51,18 @@ class BaxterEnv():
             target = self.env.model.worldbody.find("./body[@name='target']")
             target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
         elif self.task == 'push':
-            self.goal = arena_pos + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.025])
-            while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < 0.08:
-                self.goal = arena_pos + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.025])
+            self.goal = arena_pos + np.array([0.3, 0.3, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.025])
+            while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < 0.4: # <0.08
+                self.goal = arena_pos + np.array([0.3, 0.3, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.025])
+            self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
+            self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(
+                np.array([0.0, 0.0, 0.0, 1.0])))
             target = self.env.model.worldbody.find("./body[@name='target']")
             target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
+        print('Block init positions:')
+        print(init_pos)
+        print(self.goal)
+        print()
         # obj_id = self.env.sim.model.body_name2id("target")
         # self.env.model.worldbody.find("./body[@name='target']").set("pos", array_to_string(self.goal))
 
@@ -76,8 +85,11 @@ class BaxterEnv():
 
         self.state[6:9] = self.env._r_eef_xpos
 
-        im_1, im_2 = self.get_camera_obs()
-        return [im_1, im_2]
+        if self.using_feature:
+            return np.concatenate([self.state[6:9], self.obj_pos, self.target_pos], axis=0)
+        else:
+            im_1, im_2 = self.get_camera_obs()
+            return [im_1, im_2]
 
 
     def step(self, action):
@@ -85,7 +97,7 @@ class BaxterEnv():
         # 8
         # gripper open and close
         mov_degree = action * np.pi / 4.0
-        mov_dist = 0.1
+        mov_dist = 0.05 #0.03
 
         if action == 0:
             self.state[6:9] = self.state[6:9] + np.array([0.0, 0.0, mov_dist])
@@ -118,7 +130,8 @@ class BaxterEnv():
         C1 = 10
         C2 = 5
         if stucked==-1 or 1-np.abs(self.env.env._right_hand_quat[1]) > 0.01:
-            reward = - 5 - C1 * np.min([np.linalg.norm(self.target_pos - self.state[6:9]), np.linalg.norm(self.obj_pos - self.state[6:9])])
+            reward = np.exp(-1.0 * np.min([np.linalg.norm(self.state[6:9]-self.obj_pos), np.linalg.norm(self.state[6:9]-self.target_pos)]))
+            # reward = - C1 * np.min([np.linalg.norm(self.target_pos - self.state[6:9]), np.linalg.norm(self.obj_pos - self.state[6:9])])
             # reward = -10
             done = True
             print('episode done. [STUCKED]')
@@ -131,7 +144,7 @@ class BaxterEnv():
 
             if self.task == 'push':
                 if np.linalg.norm(vec) < 0.10: #0.05
-                    reward += 100
+                    reward += 10
                     done = True
                     print('episode done. [SUCCESS]')
                 else:
@@ -139,12 +152,16 @@ class BaxterEnv():
             elif self.task == 'pick':
                 if self.obj_pos[2] - self.init_obj_pos[2] > 0.3:
                     done = True
-                    reward += 100
+                    reward += 10
                 else:
                     done = False
 
-        im_1, im_2 = self.get_camera_obs()
-        return [im_1, im_2], reward, done, {}
+        if self.using_feature:
+            state = np.concatenate([self.state[6:9], self.obj_pos, self.target_pos], axis=0)
+        else:
+            im_1, im_2 = self.get_camera_obs()
+            state = [im_1, im_2]
+        return state, reward, done, {}
 
     def get_camera_obs(self):
         # GET CAMAERA IMAGE

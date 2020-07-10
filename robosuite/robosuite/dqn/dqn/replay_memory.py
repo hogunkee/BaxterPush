@@ -8,19 +8,21 @@ import numpy as np
 from .utils import save_npy, load_npy
 
 class ReplayMemory:
-  def __init__(self, config, model_dir):
+  def __init__(self, config, model_dir, using_feature=False):
     self.model_dir = model_dir
 
     self.cnn_format = config.cnn_format
     self.memory_size = config.memory_size
     self.actions = np.empty(self.memory_size, dtype = np.uint8)
     self.rewards = np.empty(self.memory_size, dtype = np.integer)
-    self.screens = np.empty((self.memory_size, 2, config.screen_height, config.screen_width, config.screen_channel), dtype = np.float16)
-    # self.screens = np.empty((self.memory_size, config.screen_height, config.screen_width), dtype=np.float16)
+    if using_feature:
+      self.screens = np.empty((self.memory_size, 9))
+      self.dims = (9,)
+    else:
+      self.screens = np.empty((self.memory_size, 2, config.screen_height, config.screen_width, config.screen_channel), dtype = np.float16)
+      self.dims = (2, config.screen_height, config.screen_width, config.screen_channel)
     self.terminals = np.empty(self.memory_size, dtype = np.bool)
     # self.history_length = config.history_length
-    self.dims = (2, config.screen_height, config.screen_width, config.screen_channel)
-    # self.dims = (config.screen_channel, config.screen_height, config.screen_width)
     self.batch_size = config.batch_size
     self.count = 0
     self.current = 0

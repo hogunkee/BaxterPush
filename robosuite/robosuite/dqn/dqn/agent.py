@@ -21,7 +21,9 @@ class Agent(BaseModel):
 
     self.env = environment
     # self.history = History(self.config)
-    self.memory = ReplayMemory(self.config, self.model_dir)
+    self.memory = ReplayMemory(self.config, self.model_dir, using_feature=self.env.using_feature)
+    # self.using_feature = False
+    self.feature_dim = 9
 
     with tf.variable_scope('step'):
       self.step_op = tf.Variable(0, trainable=False, name='step')
@@ -284,54 +286,62 @@ class Agent(BaseModel):
 
     # training network
     with tf.variable_scope('prediction'):
-      if self.cnn_format == 'NHWC':
-        self.s_t = tf.placeholder('float32',
-            [None, 2, self.screen_height, self.screen_width, self.screen_channel], name='s_t')
+      if self.env.using_feature:
+        self.s_t = tf.placeholder('float32', [None, self.feature_dim], name='s_t')
+
+        self.l1, self.w['l1_w'], self.w['l1_b'] = linear(self.s_t, 32, activation_fn=activation_fn, name='l1')
+        self.l2, self.w['l2_w'], self.w['l2_b'] = linear(self.l1, 32, activation_fn=activation_fn, name='l2')
+        self.q, self.w['q_w'], self.w['q_b'] = linear(self.l2, self.env.action_size, name='q')
+
       else:
-        self.s_t = tf.placeholder('float32',
-            [None, 2, self.screen_channel, self.screen_height, self.screen_width], name='s_t')
+        if self.cnn_format == 'NHWC':
+          self.s_t = tf.placeholder('float32',
+              [None, 2, self.screen_height, self.screen_width, self.screen_channel], name='s_t')
+        else:
+          self.s_t = tf.placeholder('float32',
+              [None, 2, self.screen_channel, self.screen_height, self.screen_width], name='s_t')
 
-      self.s_t_0 = self.s_t[:, 0, :, :]
-      self.s_t_1 = self.s_t[:, 1, :, :]
+        self.s_t_0 = self.s_t[:, 0, :, :]
+        self.s_t_1 = self.s_t[:, 1, :, :]
 
-      self.l1_0, self.w['l1_w0'], self.w['l1_b0'] = conv2d(self.s_t_0,
-          32, [8, 8], [4, 4], initializer, activation_fn, self.cnn_format, name='l1_0')
-      self.l2_0, self.w['l2_w0'], self.w['l2_b0'] = conv2d(self.l1_0,
-          64, [4, 4], [2, 2], initializer, activation_fn, self.cnn_format, name='l2_0')
-      self.l3_0, self.w['l3_w0'], self.w['l3_b0'] = conv2d(self.l2_0,
-          64, [3, 3], [1, 1], initializer, activation_fn, self.cnn_format, name='l3_0')
+        self.l1_0, self.w['l1_w0'], self.w['l1_b0'] = conv2d(self.s_t_0,
+            32, [8, 8], [4, 4], initializer, activation_fn, self.cnn_format, name='l1_0')
+        self.l2_0, self.w['l2_w0'], self.w['l2_b0'] = conv2d(self.l1_0,
+            64, [4, 4], [2, 2], initializer, activation_fn, self.cnn_format, name='l2_0')
+        self.l3_0, self.w['l3_w0'], self.w['l3_b0'] = conv2d(self.l2_0,
+            64, [3, 3], [1, 1], initializer, activation_fn, self.cnn_format, name='l3_0')
 
-      self.l1_1, self.w['l1_w1'], self.w['l1_b1'] = conv2d(self.s_t_1,
-           32, [8, 8], [4, 4], initializer, activation_fn, self.cnn_format, name='l1_1')
-      self.l2_1, self.w['l2_w1'], self.w['l2_b1'] = conv2d(self.l1_1,
-           64, [4, 4], [2, 2], initializer, activation_fn, self.cnn_format, name='l2_1')
-      self.l3_1, self.w['l3_w1'], self.w['l3_b1'] = conv2d(self.l2_1,
-           64, [3, 3], [1, 1], initializer, activation_fn, self.cnn_format, name='l3_1')
+        self.l1_1, self.w['l1_w1'], self.w['l1_b1'] = conv2d(self.s_t_1,
+             32, [8, 8], [4, 4], initializer, activation_fn, self.cnn_format, name='l1_1')
+        self.l2_1, self.w['l2_w1'], self.w['l2_b1'] = conv2d(self.l1_1,
+             64, [4, 4], [2, 2], initializer, activation_fn, self.cnn_format, name='l2_1')
+        self.l3_1, self.w['l3_w1'], self.w['l3_b1'] = conv2d(self.l2_1,
+             64, [3, 3], [1, 1], initializer, activation_fn, self.cnn_format, name='l3_1')
 
-      shape = self.l3_0.get_shape().as_list()
-      self.l3_flat_0 = tf.reshape(self.l3_0, [-1, reduce(lambda x, y: x * y, shape[1:])])
-      self.l3_flat_1 = tf.reshape(self.l3_1, [-1, reduce(lambda x, y: x * y, shape[1:])])
-      self.l3_flat = tf.concat([self.l3_flat_0, self.l3_flat_1], axis=1)
+        shape = self.l3_0.get_shape().as_list()
+        self.l3_flat_0 = tf.reshape(self.l3_0, [-1, reduce(lambda x, y: x * y, shape[1:])])
+        self.l3_flat_1 = tf.reshape(self.l3_1, [-1, reduce(lambda x, y: x * y, shape[1:])])
+        self.l3_flat = tf.concat([self.l3_flat_0, self.l3_flat_1], axis=1)
 
-      if self.dueling:
-        self.value_hid, self.w['l4_val_w'], self.w['l4_val_b'] = \
-            linear(self.l3_flat, 512, activation_fn=activation_fn, name='value_hid')
+        if self.dueling:
+          self.value_hid, self.w['l4_val_w'], self.w['l4_val_b'] = \
+              linear(self.l3_flat, 512, activation_fn=activation_fn, name='value_hid')
 
-        self.adv_hid, self.w['l4_adv_w'], self.w['l4_adv_b'] = \
-            linear(self.l3_flat, 512, activation_fn=activation_fn, name='adv_hid')
+          self.adv_hid, self.w['l4_adv_w'], self.w['l4_adv_b'] = \
+              linear(self.l3_flat, 512, activation_fn=activation_fn, name='adv_hid')
 
-        self.value, self.w['val_w_out'], self.w['val_w_b'] = \
-          linear(self.value_hid, 1, name='value_out')
+          self.value, self.w['val_w_out'], self.w['val_w_b'] = \
+            linear(self.value_hid, 1, name='value_out')
 
-        self.advantage, self.w['adv_w_out'], self.w['adv_w_b'] = \
-          linear(self.adv_hid, self.env.action_size, name='adv_out')
+          self.advantage, self.w['adv_w_out'], self.w['adv_w_b'] = \
+            linear(self.adv_hid, self.env.action_size, name='adv_out')
 
-        # Average Dueling
-        self.q = self.value + (self.advantage - 
-          tf.reduce_mean(self.advantage, reduction_indices=1, keep_dims=True))
-      else:
-        self.l4, self.w['l4_w'], self.w['l4_b'] = linear(self.l3_flat, 512, activation_fn=activation_fn, name='l4')
-        self.q, self.w['q_w'], self.w['q_b'] = linear(self.l4, self.env.action_size, name='q')
+          # Average Dueling
+          self.q = self.value + (self.advantage -
+            tf.reduce_mean(self.advantage, reduction_indices=1, keep_dims=True))
+        else:
+          self.l4, self.w['l4_w'], self.w['l4_b'] = linear(self.l3_flat, 512, activation_fn=activation_fn, name='l4')
+          self.q, self.w['q_w'], self.w['q_b'] = linear(self.l4, self.env.action_size, name='q')
 
       self.q_action = tf.argmax(self.q, dimension=1)
 
@@ -343,67 +353,75 @@ class Agent(BaseModel):
 
     # target network
     with tf.variable_scope('target'):
-      if self.cnn_format == 'NHWC':
-        self.target_s_t = tf.placeholder('float32', 
-            [None, 2, self.screen_height, self.screen_width, self.screen_channel], name='target_s_t')
+      if self.env.using_feature:
+        self.target_s_t = tf.placeholder('float32', [None, self.feature_dim], name='target_s_t')
+
+        self.target_l1, self.t_w['l1_w'], self.t_w['l1_b'] = linear(self.target_s_t, 32, activation_fn=activation_fn, name='target_l1')
+        self.target_l2, self.t_w['l2_w'], self.t_w['l2_b'] = linear(self.target_l1, 32, activation_fn=activation_fn, name='target_l2')
+        self.target_q, self.t_w['q_w'], self.t_w['q_b'] = linear(self.target_l2, self.env.action_size, name='target_q')
+
       else:
-        self.target_s_t = tf.placeholder('float32', 
-            [None, 2, self.screen_channel, self.screen_height, self.screen_width], name='target_s_t')
+        if self.cnn_format == 'NHWC':
+          self.target_s_t = tf.placeholder('float32',
+              [None, 2, self.screen_height, self.screen_width, self.screen_channel], name='target_s_t')
+        else:
+          self.target_s_t = tf.placeholder('float32',
+              [None, 2, self.screen_channel, self.screen_height, self.screen_width], name='target_s_t')
 
-      self.target_s_t_0 = self.target_s_t[:, 0, :, :]
-      self.target_s_t_1 = self.target_s_t[:, 1, :, :]
+        self.target_s_t_0 = self.target_s_t[:, 0, :, :]
+        self.target_s_t_1 = self.target_s_t[:, 1, :, :]
 
-      self.target_l1_0, self.t_w['l1_w0'], self.t_w['l1_b0'] = conv2d(self.target_s_t_0,
-           32, [8, 8], [4, 4], initializer, activation_fn, self.cnn_format, name='target_l1_0')
-      self.target_l2_0, self.t_w['l2_w0'], self.t_w['l2_b0'] = conv2d(self.target_l1_0,
-           64, [4, 4], [2, 2], initializer, activation_fn, self.cnn_format, name='target_l2_0')
-      self.target_l3_0, self.t_w['l3_w0'], self.t_w['l3_b0'] = conv2d(self.target_l2_0,
-           64, [3, 3], [1, 1], initializer, activation_fn, self.cnn_format, name='target_l3_0')
+        self.target_l1_0, self.t_w['l1_w0'], self.t_w['l1_b0'] = conv2d(self.target_s_t_0,
+             32, [8, 8], [4, 4], initializer, activation_fn, self.cnn_format, name='target_l1_0')
+        self.target_l2_0, self.t_w['l2_w0'], self.t_w['l2_b0'] = conv2d(self.target_l1_0,
+             64, [4, 4], [2, 2], initializer, activation_fn, self.cnn_format, name='target_l2_0')
+        self.target_l3_0, self.t_w['l3_w0'], self.t_w['l3_b0'] = conv2d(self.target_l2_0,
+             64, [3, 3], [1, 1], initializer, activation_fn, self.cnn_format, name='target_l3_0')
 
-      self.target_l1_1, self.t_w['l1_w1'], self.t_w['l1_b1'] = conv2d(self.target_s_t_1,
-           32, [8, 8], [4, 4], initializer, activation_fn, self.cnn_format, name='target_l1_1')
-      self.target_l2_1, self.t_w['l2_w1'], self.t_w['l2_b1'] = conv2d(self.target_l1_1,
-           64, [4, 4], [2, 2], initializer, activation_fn, self.cnn_format, name='target_l2_1')
-      self.target_l3_1, self.t_w['l3_w1'], self.t_w['l3_b1'] = conv2d(self.target_l2_1,
-           64, [3, 3], [1, 1], initializer, activation_fn, self.cnn_format, name='target_l3_1')
+        self.target_l1_1, self.t_w['l1_w1'], self.t_w['l1_b1'] = conv2d(self.target_s_t_1,
+             32, [8, 8], [4, 4], initializer, activation_fn, self.cnn_format, name='target_l1_1')
+        self.target_l2_1, self.t_w['l2_w1'], self.t_w['l2_b1'] = conv2d(self.target_l1_1,
+             64, [4, 4], [2, 2], initializer, activation_fn, self.cnn_format, name='target_l2_1')
+        self.target_l3_1, self.t_w['l3_w1'], self.t_w['l3_b1'] = conv2d(self.target_l2_1,
+             64, [3, 3], [1, 1], initializer, activation_fn, self.cnn_format, name='target_l3_1')
 
-      shape = self.target_l3_0.get_shape().as_list()
-      self.target_l3_flat_0 = tf.reshape(self.target_l3_0, [-1, reduce(lambda x, y: x * y, shape[1:])])
-      self.target_l3_flat_1 = tf.reshape(self.target_l3_1, [-1, reduce(lambda x, y: x * y, shape[1:])])
-      self.target_l3_flat = tf.concat([self.target_l3_flat_0, self.target_l3_flat_1], axis=1)
+        shape = self.target_l3_0.get_shape().as_list()
+        self.target_l3_flat_0 = tf.reshape(self.target_l3_0, [-1, reduce(lambda x, y: x * y, shape[1:])])
+        self.target_l3_flat_1 = tf.reshape(self.target_l3_1, [-1, reduce(lambda x, y: x * y, shape[1:])])
+        self.target_l3_flat = tf.concat([self.target_l3_flat_0, self.target_l3_flat_1], axis=1)
 
-      '''
-      self.target_l1, self.t_w['l1_w'], self.t_w['l1_b'] = conv2d(self.target_s_t, 
-          32, [8, 8], [4, 4], initializer, activation_fn, self.cnn_format, name='target_l1')
-      self.target_l2, self.t_w['l2_w'], self.t_w['l2_b'] = conv2d(self.target_l1,
-          64, [4, 4], [2, 2], initializer, activation_fn, self.cnn_format, name='target_l2')
-      self.target_l3, self.t_w['l3_w'], self.t_w['l3_b'] = conv2d(self.target_l2,
-          64, [3, 3], [1, 1], initializer, activation_fn, self.cnn_format, name='target_l3')
+        '''
+        self.target_l1, self.t_w['l1_w'], self.t_w['l1_b'] = conv2d(self.target_s_t, 
+            32, [8, 8], [4, 4], initializer, activation_fn, self.cnn_format, name='target_l1')
+        self.target_l2, self.t_w['l2_w'], self.t_w['l2_b'] = conv2d(self.target_l1,
+            64, [4, 4], [2, 2], initializer, activation_fn, self.cnn_format, name='target_l2')
+        self.target_l3, self.t_w['l3_w'], self.t_w['l3_b'] = conv2d(self.target_l2,
+            64, [3, 3], [1, 1], initializer, activation_fn, self.cnn_format, name='target_l3')
+  
+        shape = self.target_l3.get_shape().as_list()
+        self.target_l3_flat = tf.reshape(self.target_l3, [-1, reduce(lambda x, y: x * y, shape[1:])])
+        '''
+        if self.dueling:
+          self.t_value_hid, self.t_w['l4_val_w'], self.t_w['l4_val_b'] = \
+              linear(self.target_l3_flat, 512, activation_fn=activation_fn, name='target_value_hid')
 
-      shape = self.target_l3.get_shape().as_list()
-      self.target_l3_flat = tf.reshape(self.target_l3, [-1, reduce(lambda x, y: x * y, shape[1:])])
-      '''
-      if self.dueling:
-        self.t_value_hid, self.t_w['l4_val_w'], self.t_w['l4_val_b'] = \
-            linear(self.target_l3_flat, 512, activation_fn=activation_fn, name='target_value_hid')
+          self.t_adv_hid, self.t_w['l4_adv_w'], self.t_w['l4_adv_b'] = \
+              linear(self.target_l3_flat, 512, activation_fn=activation_fn, name='target_adv_hid')
 
-        self.t_adv_hid, self.t_w['l4_adv_w'], self.t_w['l4_adv_b'] = \
-            linear(self.target_l3_flat, 512, activation_fn=activation_fn, name='target_adv_hid')
+          self.t_value, self.t_w['val_w_out'], self.t_w['val_w_b'] = \
+            linear(self.t_value_hid, 1, name='target_value_out')
 
-        self.t_value, self.t_w['val_w_out'], self.t_w['val_w_b'] = \
-          linear(self.t_value_hid, 1, name='target_value_out')
+          self.t_advantage, self.t_w['adv_w_out'], self.t_w['adv_w_b'] = \
+            linear(self.t_adv_hid, self.env.action_size, name='target_adv_out')
 
-        self.t_advantage, self.t_w['adv_w_out'], self.t_w['adv_w_b'] = \
-          linear(self.t_adv_hid, self.env.action_size, name='target_adv_out')
-
-        # Average Dueling
-        self.target_q = self.t_value + (self.t_advantage - 
-          tf.reduce_mean(self.t_advantage, reduction_indices=1, keep_dims=True))
-      else:
-        self.target_l4, self.t_w['l4_w'], self.t_w['l4_b'] = \
-            linear(self.target_l3_flat, 512, activation_fn=activation_fn, name='target_l4')
-        self.target_q, self.t_w['q_w'], self.t_w['q_b'] = \
-            linear(self.target_l4, self.env.action_size, name='target_q')
+          # Average Dueling
+          self.target_q = self.t_value + (self.t_advantage -
+            tf.reduce_mean(self.t_advantage, reduction_indices=1, keep_dims=True))
+        else:
+          self.target_l4, self.t_w['l4_w'], self.t_w['l4_b'] = \
+              linear(self.target_l3_flat, 512, activation_fn=activation_fn, name='target_l4')
+          self.target_q, self.t_w['q_w'], self.t_w['q_b'] = \
+              linear(self.target_l4, self.env.action_size, name='target_q')
 
       self.target_q_idx = tf.placeholder('int32', [None, None], 'outputs_idx')
       self.target_q_with_idx = tf.gather_nd(self.target_q, self.target_q_idx)

@@ -37,6 +37,7 @@ flags.DEFINE_integer('num_objects', 2, 'number of objects')
 flags.DEFINE_integer('num_episodes', 10000, 'number of episodes')
 flags.DEFINE_integer('num_steps', 1, 'number of steps')
 flags.DEFINE_boolean('render', False, 'Whether to do rendering or not') #True
+flags.DEFINE_boolean('using_feature', True, 'Whether to using feature states or images')
 flags.DEFINE_string('bin_type', 'table', 'bin type')
 flags.DEFINE_string('object_type', 'cube', 'object type')
 flags.DEFINE_boolean('test', False, 'Test or not')
@@ -84,7 +85,7 @@ def main(_):
         camera_height=config.screen_height
     )
     env = IKWrapper(env)
-    env = BaxterEnv(env, task='push', render=FLAGS.render)
+    env = BaxterEnv(env, task='push', render=FLAGS.render, using_feature=FLAGS.using_feature)
 
     if not tf.test.is_gpu_available() and FLAGS.use_gpu:
       raise Exception("use_gpu flag is true when no GPUs are available")
