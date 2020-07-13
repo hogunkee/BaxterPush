@@ -13,6 +13,7 @@ from ppo.renderthread import RenderThread
 from ppo.models import *
 from ppo.trainer import Trainer
 
+import datetime
 import tensorflow as tf
 flags = tf.app.flags
 
@@ -60,6 +61,8 @@ summary_freq = 100 #buffer_size * 5
 save_freq = 500 #summary_freq
 
 flags.DEFINE_boolean('train', True, 'Train a new model or test the trained model.')
+flags.DEFINE_string('model_name', None, 'name of trained model')
+
 FLAGS = flags.FLAGS
 if FLAGS.train:
     load_model = False
@@ -69,6 +72,14 @@ else:
     load_model = True
     render = True
     train_model = False
+
+if FLAGS.model_name:
+    model_path = os.path.join(model_path, FLAGS.model_name)
+    summary_path = os.path.join(summary_path, FALGS.model_name)
+else:
+    now = datetime.datetime.now()
+    model_path = os.path.join(model_path, now.strftime("%m%d_%H%M%S"))
+    summary_path = os.path.join(summary_path, now.strftime("%m%d_%H%M%S"))
 # load                     Whether to load the model or randomly initialize [default: False].
 # load_model = True #False #True
 # train                    Whether to train model, or only run inference [default: False].

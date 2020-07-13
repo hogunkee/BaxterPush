@@ -94,7 +94,7 @@ class Trainer(object):
         for (agent, history) in self.history_dict.items():
             idx = 0
             if self.use_observations:
-                history['observations'].append([obs[idx]])
+                history['observations'].append([np.array(obs)]) #[obs[idx]])
             if self.use_states:
                 history['states'].append(obs[idx])
             if self.is_continuous:
@@ -179,14 +179,14 @@ class Trainer(object):
                 if self.use_states:
                     feed_dict[self.model.state_in] = np.vstack(training_buffer['states'][start:end])
                 if self.use_observations:
-                    feed_dict[self.model.observation_in] = np.vstack(training_buffer['observations']) #[start:end])
+                    feed_dict[self.model.observation_in] = np.vstack(training_buffer['observations'][start:end])
                 v_loss, p_loss, _ = self.sess.run([self.model.value_loss, self.model.policy_loss,
                                                    self.model.update_batch], feed_dict=feed_dict)
                 total_v += v_loss
                 total_p += p_loss
         self.stats['value_loss'].append(total_v)
         self.stats['policy_loss'].append(total_p)
-        self.training_buffer = vectorize_history(empty_local_history({}))
+        self.training_buffer = vectorize_history(empty_local_history()) #{}))
 
     def write_summary(self, summary_writer, steps):
         """
