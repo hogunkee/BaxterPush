@@ -22,7 +22,7 @@ flags = tf.app.flags
 
 # Algorithm parameters
 # batch-size=<n>           How many experiences per gradient descent update step [default: 64].
-batch_size = 32 #128
+batch_size = 128
 # beta=<n>                 Strength of entropy regularization [default: 2.5e-3].
 beta = 2.5e-3
 # buffer-size=<n>          How large the experience buffer should be before gradient descent [default: 2048].
@@ -36,7 +36,7 @@ hidden_units = 128
 # lambd=<n>                Lambda parameter for GAE [default: 0.95].
 lambd = 0.95
 # learning-rate=<rate>     Model learning rate [default: 3e-4].
-learning_rate = 4e-5
+learning_rate = 3e-4 #4e-5
 # max-steps=<n>            Maximum number of steps to run environment [default: 1e6].
 max_steps = 3e4 #15e6
 # normalize                Activate state normalization for this many steps and freeze statistics afterwards.

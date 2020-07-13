@@ -139,7 +139,7 @@ class BaxterEnv():
             done = True
             print('episode done. [STUCKED]')
         else:
-            distance_reward = np.exp( 100*(- np.linalg.norm(vec) + np.linalg.norm(self.pre_vec)) ) - 1
+            distance_reward = np.exp( 50*(- np.linalg.norm(vec) + np.linalg.norm(self.pre_vec)) ) - 1
             touching_reward = np.linalg.norm(self.obj_pos - self.pre_obj_pos) + np.linalg.norm(self.target_pos - self.pre_target_pos)
             step_penalty = 0.0 #0.1
             reward = C1 * distance_reward + C2 * touching_reward - step_penalty

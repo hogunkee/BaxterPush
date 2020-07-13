@@ -96,7 +96,7 @@ class Trainer(object):
             if self.use_observations:
                 history['observations'].append([np.array(obs)]) #[obs[idx]])
             if self.use_states:
-                history['states'].append(obs[idx])
+                history['states'].append(obs) #obs[idx]
             if self.is_continuous:
                 history['epsilons'].append(epsi[idx])
             history['actions'].append(actions[idx])
