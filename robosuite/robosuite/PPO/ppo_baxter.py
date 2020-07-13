@@ -60,16 +60,18 @@ summary_freq = 100 #buffer_size * 5
 # save-freq=<n>            Frequency at which to save model [default: 50000].
 save_freq = 500 #summary_freq
 
-flags.DEFINE_boolean('use_feature', True, 'using feature-base states or image-base states.')
-flags.DEFINE_boolean('train', True, 'Train a new model or test the trained model.')
+flags.DEFINE_integer('use_feature', 1, 'using feature-base states or image-base states.')
+flags.DEFINE_integer('train', 1, 'Train a new model or test the trained model.')
 flags.DEFINE_string('model_name', None, 'name of trained model')
 
 FLAGS = flags.FLAGS
-using_feature = FLAGS.use_feature
+using_feature = (FLAGS.use_feature==1)
 if using_feature:
-    print('This model will use feature states..!!')
+    print('This model will use feature-based states..!!')
+else:
+    print('This model will use image-based states..!!')
 
-if FLAGS.train:
+if FLAGS.train==1:
     load_model = False
     render = False
     train_model = True
