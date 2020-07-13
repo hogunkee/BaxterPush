@@ -65,19 +65,20 @@ env = GymEnvironment(env_name=env_name, log_path="./PPO_log", skip_frames=6)
 env_render = GymEnvironment(env_name=env_name, log_path="./PPO_log_render", render=True, record=record)
 fps = env_render.env.metadata.get('video.frames_per_second', 30)
 
+is_continuous = False #env.brains[brain_name].action_space_type == "continuous"
+use_observations = False
+use_states = True
+
+
 print(str(env))
-brain_name = env.external_brain_names[0]
+#brain_name = env.external_brain_names[0]
 
 tf.reset_default_graph()
-
 ppo_model = create_agent_model(env, lr=learning_rate,
                                h_size=hidden_units, epsilon=epsilon,
                                beta=beta, max_step=max_steps,
-                               normalize=normalize_steps, num_layers=num_layers)
-
-is_continuous = env.brains[brain_name].action_space_type == "continuous"
-use_observations = False
-use_states = True
+                               normalize=normalize_steps, num_layers=num_layers,
+                               use_states=use_states)
 
 if not load_model:
     shutil.rmtree(summary_path, ignore_errors=True)

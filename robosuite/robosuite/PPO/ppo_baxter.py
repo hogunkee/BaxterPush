@@ -13,13 +13,15 @@ from ppo.renderthread import RenderThread
 from ppo.models import *
 from ppo.trainer import Trainer
 
+import tensorflow as tf
+flags = tf.app.flags
 
 # ## Proximal Policy Optimization (PPO)
 # Contains an implementation of PPO as described [here](https://arxiv.org/abs/1707.06347).
 
 # Algorithm parameters
 # batch-size=<n>           How many experiences per gradient descent update step [default: 64].
-batch_size = 128
+batch_size = 32 #128
 # beta=<n>                 Strength of entropy regularization [default: 2.5e-3].
 beta = 2.5e-3
 # buffer-size=<n>          How large the experience buffer should be before gradient descent [default: 2048].
@@ -35,7 +37,7 @@ lambd = 0.95
 # learning-rate=<rate>     Model learning rate [default: 3e-4].
 learning_rate = 4e-5
 # max-steps=<n>            Maximum number of steps to run environment [default: 1e6].
-max_steps = 15e6
+max_steps = 3e4 #15e6
 # normalize                Activate state normalization for this many steps and freeze statistics afterwards.
 normalize_steps = 0
 # num-epoch=<n>            Number of gradient descent steps per batch of experiences [default: 5].
@@ -43,33 +45,45 @@ num_epoch = 10
 # num-layers=<n>           Number of hidden layers between state/observation and outputs [default: 2].
 num_layers = 1
 # time-horizon=<n>         How many steps to collect per agent before adding to buffer [default: 2048].
-time_horizon = 2048
+time_horizon = 512 #2048
 
 # General parameters
 # keep-checkpoints=<n>     How many model checkpoints to keep [default: 5].
 keep_checkpoints = 5
-# load                     Whether to load the model or randomly initialize [default: False].
-load_model = True
+
 # run-path=<path>          The sub-directory name for model and summary statistics.
 summary_path = './PPO_summary'
 model_path = './models'
 # summary-freq=<n>         Frequency at which to save training statistics [default: 10000].
-summary_freq = buffer_size * 5
+summary_freq = 100 #buffer_size * 5
 # save-freq=<n>            Frequency at which to save model [default: 50000].
-save_freq = summary_freq
+save_freq = 500 #summary_freq
+
+flags.DEFINE_boolean('train', True, 'Train a new model or test the trained model.')
+FLAGS = flags.FLAGS
+if FLAGS.train:
+    load_model = False
+    render = False
+    train_model = True
+else:
+    load_model = True
+    render = True
+    train_model = False
+# load                     Whether to load the model or randomly initialize [default: False].
+# load_model = True #False #True
 # train                    Whether to train model, or only run inference [default: False].
-train_model = True
+# train_model = False #True
 # render environment to display progress
-render = True
+# render = True #False #True
 # save recordings of episodes
 record = True
 
 # Baxter parameters
 # camera resolution
-screen_width = 128
-screen_height = 128
+screen_width = 64
+screen_height = 64
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # GPU is not efficient here
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # GPU is not efficient here
 
 env = robosuite.make(
     "BaxterPush",
@@ -134,21 +148,21 @@ with tf.Session() as sess:
 
     steps, last_reward = sess.run([ppo_model.global_step, ppo_model.last_reward])
     summary_writer = tf.summary.FileWriter(summary_path)
-    _ = env.reset() #[brain_name]
+    obs = env.reset() #[brain_name]
     trainer = Trainer(ppo_model, sess, is_continuous, use_observations, use_states, train_model)
     trainer_monitor = Trainer(ppo_model, sess, is_continuous, use_observations, use_states, False)
     render_started = False
 
     while steps <= max_steps or not train_model:
         if env.global_done:
-            _ = env.reset() #[brain_name]
-            trainer.reset_buffers({'ppo': None}, total=True)
+            obs = env.reset() #[brain_name]
+            trainer.reset_buffers(total=True) #({'ppo': None}, total=True)
         # Decide and take an action
-        if train_model:
-            info = trainer.take_action(info, env, brain_name, steps, normalize_steps, stochastic=True)
-            trainer.process_experiences(info, time_horizon, gamma, lambd)
-        else:
-            sleep(1)
+        # if train_model:
+        obs = trainer.take_action(obs, env, steps, normalize_steps, stochastic=True)
+        trainer.process_experiences(obs, env.global_done, time_horizon, gamma, lambd)
+        # else:
+        #     sleep(1)
         if len(trainer.training_buffer['actions']) > buffer_size and train_model:
             if render:
                 renderthread.pause()
@@ -172,11 +186,11 @@ with tf.Session() as sess:
                 mean_reward = np.mean(trainer.stats['cumulative_reward'])
                 sess.run(ppo_model.update_reward, feed_dict={ppo_model.new_reward: mean_reward})
                 last_reward = sess.run(ppo_model.last_reward)
-        if not render_started and render:
-            renderthread = RenderThread(sess=sess, trainer=trainer_monitor,
-                                        environment=env_render, brain_name=brain_name, normalize=normalize_steps, fps=fps)
-            renderthread.start()
-            render_started = True
+        # if not render_started and render:
+        #     renderthread = RenderThread(sess=sess, trainer=trainer_monitor,
+        #                                 environment=env, brain_name=brain_name, normalize=normalize_steps, fps=fps)
+        #     renderthread.start()
+        #     render_started = True
     # Final save Tensorflow model
     if steps != 0 and train_model:
         save_model(sess=sess, model_path=model_path, steps=steps, saver=saver)

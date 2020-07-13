@@ -34,6 +34,8 @@ class BaxterEnv():
         self.render = render
         self.using_feature = using_feature
 
+        self.global_done = False
+
     def reset(self):
         arena_pos = self.env.env.mujoco_arena.bin_abs
         self.state = np.array([0.4, 0.6, 1.0, 0.0, 0.0, 0.0, 0.4, -0.6, 1.0, 0.0, 0.0, 0.0])
@@ -84,6 +86,7 @@ class BaxterEnv():
             self.pre_target_pos = self.target_pos
 
         self.state[6:9] = self.env._r_eef_xpos
+        self.global_done = False
 
         if self.using_feature:
             return np.concatenate([self.state[6:9], self.obj_pos, self.target_pos], axis=0)
@@ -156,6 +159,7 @@ class BaxterEnv():
                 else:
                     done = False
 
+        self.global_done = done
         if self.using_feature:
             state = np.concatenate([self.state[6:9], self.obj_pos, self.target_pos], axis=0)
         else:

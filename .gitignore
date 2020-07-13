@@ -4,3 +4,5 @@ data/
 .idea/
 checkpoints/
 logs/
+robosuite/robosuite/PPO/PPO_summary/
+robosuite/robosuite/PPO/models/

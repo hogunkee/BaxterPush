@@ -33,15 +33,26 @@ def get_gae(rewards, value_estimates, value_next=0.0, gamma=0.99, lambd=0.95):
     return advantage
 
 
-def empty_local_history(agent_dict):
+def empty_local_history(): #agent_dict):
     """
     Empties the experience history for a single agent.
     :param agent_dict: Dictionary of agent experience history.
     :return: Emptied dictionary (except for cumulative_reward and episode_steps).
     """
-    for key in history_keys:
-        agent_dict[key] = []
-    return agent_dict
+    return {'action_probs': [],
+              'actions': [],
+              'advantages': [],
+              'cumulative_reward': 0,
+              'discounted_returns': [],
+              'episode_steps': 0,
+              'epsilons': [],
+              'observations': [],
+              'rewards': [],
+              'states': [],
+              'value_estimates': []}
+    # for key in history_keys:
+    #     agent_dict[key] = []
+    # return agent_dict
 
 
 def vectorize_history(agent_dict):
@@ -55,19 +66,30 @@ def vectorize_history(agent_dict):
     return agent_dict
 
 
-def empty_all_history(agent_info):
+def empty_all_history(): #(agent_info):
     """
     Clears all agent histories and resets reward and episode length counters.
     :param agent_info: a BrainInfo object.
     :return: an emptied history dictionary.
     """
-    history_dict = {}
-    for agent in agent_info.agents:
-        history_dict[agent] = {}
-        history_dict[agent] = empty_local_history(history_dict[agent])
-        history_dict[agent]['cumulative_reward'] = 0
-        history_dict[agent]['episode_steps'] = 0
-    return history_dict
+    return {'FirstBrain': {'action_probs': [],
+                           'actions': [],
+                           'advantages': [],
+                           'cumulative_reward': 0,
+                           'discounted_returns': [],
+                           'episode_steps': 0,
+                           'epsilons': [],
+                           'observations': [],
+                           'rewards': [],
+                           'states': [],
+                           'value_estimates': []}}
+    # history_dict = {}
+    # for agent in agent_info.agents:
+    #     history_dict[agent] = {}
+    #     history_dict[agent] = empty_local_history(history_dict[agent])
+    #     history_dict[agent]['cumulative_reward'] = 0
+    #     history_dict[agent]['episode_steps'] = 0
+    # return history_dict
 
 
 def append_history(global_buffer, local_buffer=None):
