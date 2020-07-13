@@ -4,7 +4,7 @@ from ppo.history import *
 
 
 class Trainer(object):
-    def __init__(self, ppo_model, sess, is_continuous, use_observations, use_states, training):
+    def __init__(self, ppo_model, sess, is_continuous, use_states, training):
         """
         Responsible for collecting experiences and training PPO model.
         :param ppo_model: Tensorflow graph defining model.
@@ -22,7 +22,7 @@ class Trainer(object):
         self.reset_buffers(total=True) #({'ppo': None}, total=True)
         self.training_buffer = vectorize_history(empty_local_history()) #{}))
         self.is_continuous = is_continuous
-        self.use_observations = use_observations
+        self.use_observations = not use_states #use_observations
         self.use_states = use_states
 
     def running_average(self, data, steps, running_mean, running_variance):

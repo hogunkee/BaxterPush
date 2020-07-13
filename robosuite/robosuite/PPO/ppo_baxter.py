@@ -60,10 +60,15 @@ summary_freq = 100 #buffer_size * 5
 # save-freq=<n>            Frequency at which to save model [default: 50000].
 save_freq = 500 #summary_freq
 
+flags.DEFINE_boolean('use_feature', True, 'using feature-base states or image-base states.')
 flags.DEFINE_boolean('train', True, 'Train a new model or test the trained model.')
 flags.DEFINE_string('model_name', None, 'name of trained model')
 
 FLAGS = flags.FLAGS
+using_feature = FLAGS.use_feature
+if using_feature:
+    print('This model will use feature states..!!')
+
 if FLAGS.train:
     load_model = False
     render = False
@@ -75,7 +80,7 @@ else:
 
 if FLAGS.model_name:
     model_path = os.path.join(model_path, FLAGS.model_name)
-    summary_path = os.path.join(summary_path, FALGS.model_name)
+    summary_path = os.path.join(summary_path, FLAGS.model_name)
 else:
     now = datetime.datetime.now()
     model_path = os.path.join(model_path, now.strftime("%m%d_%H%M%S"))
@@ -113,7 +118,7 @@ env = robosuite.make(
     camera_height=screen_height
 )
 env = IKWrapper(env)
-env = BaxterEnv(env, task='push', render=render)
+env = BaxterEnv(env, task='push', render=render, using_feature=using_feature)
 # env_name = 'RocketLander-v0'
 # env = GymEnvironment(env_name=env_name, log_path="./PPO_log", skip_frames=6)
 # env_render = GymEnvironment(env_name=env_name, log_path="./PPO_log_render", render=True, record=record)
@@ -127,11 +132,12 @@ tf.reset_default_graph()
 ppo_model = create_agent_model(env, lr=learning_rate,
                                h_size=hidden_units, epsilon=epsilon,
                                beta=beta, max_step=max_steps,
-                               normalize=normalize_steps, num_layers=num_layers)
+                               normalize=normalize_steps, num_layers=num_layers,
+                               use_states=using_feature)
 
 is_continuous = False #env.brains[brain_name].action_space_type == "continuous"
-use_observations = True
-use_states = False
+# use_observations = True
+# use_states = False
 
 if not load_model:
     shutil.rmtree(summary_path, ignore_errors=True)
@@ -160,8 +166,8 @@ with tf.Session() as sess:
     steps, last_reward = sess.run([ppo_model.global_step, ppo_model.last_reward])
     summary_writer = tf.summary.FileWriter(summary_path)
     obs = env.reset() #[brain_name]
-    trainer = Trainer(ppo_model, sess, is_continuous, use_observations, use_states, train_model)
-    trainer_monitor = Trainer(ppo_model, sess, is_continuous, use_observations, use_states, False)
+    trainer = Trainer(ppo_model, sess, is_continuous, using_feature, train_model)
+    trainer_monitor = Trainer(ppo_model, sess, is_continuous, using_feature, False)
     render_started = False
 
     while steps <= max_steps or not train_model:
