@@ -179,7 +179,7 @@ class Trainer(object):
                 if self.use_states:
                     feed_dict[self.model.state_in] = np.vstack(training_buffer['states'][start:end])
                 if self.use_observations:
-                    feed_dict[self.model.observation_in] = np.vstack(training_buffer['observations'][start:end])
+                    feed_dict[self.model.observation_in] = np.vstack(training_buffer['observations']) #[start:end])
                 v_loss, p_loss, _ = self.sess.run([self.model.value_loss, self.model.policy_loss,
                                                    self.model.update_batch], feed_dict=feed_dict)
                 total_v += v_loss
