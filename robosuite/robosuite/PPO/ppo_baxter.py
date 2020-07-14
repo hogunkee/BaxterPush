@@ -99,9 +99,9 @@ record = True
 
 # Baxter parameters
 # camera resolution
-screen_width = 96 #64
-screen_height = 96 #64
-crop = 64 #None
+screen_width = 64 #96
+screen_height = 64 #96
+crop = None #64 #None
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # GPU is not efficient here
 

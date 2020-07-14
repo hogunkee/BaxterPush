@@ -53,9 +53,9 @@ class BaxterEnv():
             target = self.env.model.worldbody.find("./body[@name='target']")
             target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
         elif self.task == 'push':
-            self.goal = arena_pos + np.array([0.3, 0.3, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.025])
+            self.goal = arena_pos + np.array([0.3, 0.3, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1]) #0.025
             while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < 0.4: # <0.08
-                self.goal = arena_pos + np.array([0.3, 0.3, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.025])
+                self.goal = arena_pos + np.array([0.3, 0.3, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1]) #0.025
             self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
             self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(
                 np.array([0.0, 0.0, 0.0, 1.0])))
@@ -92,7 +92,7 @@ class BaxterEnv():
             return np.concatenate([self.state[6:9], self.obj_pos, self.target_pos], axis=0)
         else:
             im_1, im_2 = self.get_camera_obs()
-            ## visualizing observations ##
+            # visualizing observations ##
             # fig, ax = plt.subplots(1, 2)
             # ax[0].imshow(im_1)
             # ax[1].imshow(im_2)
