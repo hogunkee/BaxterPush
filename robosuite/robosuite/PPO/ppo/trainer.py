@@ -123,7 +123,7 @@ class Trainer(object):
             else:
                 feed_dict = {self.model.batch_size: len(obs)}
                 if self.use_observations:
-                    feed_dict[self.model.observation_in] = np.array(obs) # np.vstack(obs)
+                    feed_dict[self.model.observation_in] = np.array([obs]) # np.vstack(obs)
                 if self.use_states:
                     feed_dict[self.model.state_in] = obs
                 value_next = self.sess.run(self.model.value, feed_dict)[0]
