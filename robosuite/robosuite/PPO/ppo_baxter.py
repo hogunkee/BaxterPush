@@ -82,15 +82,16 @@ else:
     render = True
     train_model = False
 
+task = FLAGS.task
+
 if FLAGS.model_name:
     model_path = os.path.join(model_path, FLAGS.model_name)
     summary_path = os.path.join(summary_path, FLAGS.model_name)
+    assert task in FLAGS.model_name
 else:
     now = datetime.datetime.now()
-    model_path = os.path.join(model_path, now.strftime("%m%d_%H%M%S"))
-    summary_path = os.path.join(summary_path, now.strftime("%m%d_%H%M%S"))
-
-task = FLAGS.task
+    model_path = os.path.join(model_path, task + '_' + now.strftime("%m%d_%H%M%S"))
+    summary_path = os.path.join(summary_path, task + '_' + now.strftime("%m%d_%H%M%S"))
 
 # load                     Whether to load the model or randomly initialize [default: False].
 # load_model = True #False #True

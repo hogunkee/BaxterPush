@@ -201,7 +201,7 @@ class BaxterEnv():
             im_1, im_2 = self.get_camera_obs()
             state = [im_1, im_2]
 
-        print('reward:', reward)
+        # print('reward:', reward)
         return state, reward, done, {}
 
     def get_camera_obs(self):
