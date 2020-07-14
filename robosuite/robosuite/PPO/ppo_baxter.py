@@ -61,9 +61,10 @@ summary_freq = 100 #buffer_size * 5
 # save-freq=<n>            Frequency at which to save model [default: 50000].
 save_freq = 500 #summary_freq
 
-flags.DEFINE_integer('use_feature', 1, 'using feature-base states or image-base states.')
+flags.DEFINE_integer('use_feature', 0, 'using feature-base states or image-base states.')
 flags.DEFINE_integer('train', 1, 'Train a new model or test the trained model.')
 flags.DEFINE_string('model_name', None, 'name of trained model')
+flags.DEFINE_string('task', 'reach', 'name of task: reach / push / pick')
 
 FLAGS = flags.FLAGS
 using_feature = (FLAGS.use_feature==1)
@@ -88,6 +89,9 @@ else:
     now = datetime.datetime.now()
     model_path = os.path.join(model_path, now.strftime("%m%d_%H%M%S"))
     summary_path = os.path.join(summary_path, now.strftime("%m%d_%H%M%S"))
+
+task = FLAGS.task
+
 # load                     Whether to load the model or randomly initialize [default: False].
 # load_model = True #False #True
 # train                    Whether to train model, or only run inference [default: False].
@@ -123,7 +127,7 @@ env = robosuite.make(
     crop=crop
 )
 env = IKWrapper(env)
-env = BaxterEnv(env, task='push', render=render, using_feature=using_feature)
+env = BaxterEnv(env, task=task, render=render, using_feature=using_feature)
 # env_name = 'RocketLander-v0'
 # env = GymEnvironment(env_name=env_name, log_path="./PPO_log", skip_frames=6)
 # env_render = GymEnvironment(env_name=env_name, log_path="./PPO_log_render", render=True, record=record)
