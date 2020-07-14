@@ -91,8 +91,8 @@ class BaxterEnv():
         if self.using_feature:
             return np.concatenate([self.state[6:9], self.obj_pos, self.target_pos], axis=0)
         else:
+            im_1, im_2 = self.get_camera_obs()
             ## visualizing observations ##
-            # im_1, im_2 = self.get_camera_obs()
             # fig, ax = plt.subplots(1, 2)
             # ax[0].imshow(im_1)
             # ax[1].imshow(im_2)

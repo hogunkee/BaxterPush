@@ -53,8 +53,9 @@ time_horizon = 512 #2048
 keep_checkpoints = 5
 
 # run-path=<path>          The sub-directory name for model and summary statistics.
-summary_path = './PPO_summary'
-model_path = './models'
+file_path = os.path.dirname(os.path.abspath(__file__))
+summary_path = os.path.join(file_path, 'PPO_summary')
+model_path = os.path.join(file_path, 'models')
 # summary-freq=<n>         Frequency at which to save training statistics [default: 10000].
 summary_freq = 100 #buffer_size * 5
 # save-freq=<n>            Frequency at which to save model [default: 50000].
