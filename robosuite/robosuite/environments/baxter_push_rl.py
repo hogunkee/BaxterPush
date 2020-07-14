@@ -44,6 +44,7 @@ class BaxterPush(BaxterEnv):
         camera_name="agentview",
         camera_height=256,
         camera_width=256,
+        crop=None,
         camera_depth=True,
         model_ver=2,
         model_name=None,
@@ -160,6 +161,8 @@ class BaxterPush(BaxterEnv):
             camera_width=camera_width,
             camera_depth=camera_depth,
         )
+
+        self.crop = crop
 
         # reward configuration
         self.reward_shaping = reward_shaping

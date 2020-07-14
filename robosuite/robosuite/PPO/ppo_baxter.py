@@ -98,8 +98,9 @@ record = True
 
 # Baxter parameters
 # camera resolution
-screen_width = 64
-screen_height = 64
+screen_width = 96 #64
+screen_height = 96 #64
+crop = 64 #None
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # GPU is not efficient here
 
@@ -117,7 +118,8 @@ env = robosuite.make(
     num_objects=2,
     control_freq=100,
     camera_width=screen_width,
-    camera_height=screen_height
+    camera_height=screen_height,
+    crop=crop
 )
 env = IKWrapper(env)
 env = BaxterEnv(env, task='push', render=render, using_feature=using_feature)

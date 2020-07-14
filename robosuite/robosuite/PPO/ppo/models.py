@@ -291,7 +291,10 @@ class DiscreteControlModel(PPOModel):
             s_size = 9
             hidden_state = self._create_continuous_state_encoder(s_size, h_size, 1, tf.nn.elu, num_layers)[0]
         else:
-            height_size, width_size = env.env.env.camera_height, env.env.env.camera_width
+            if env.env.env.crop is not None:
+                height_size = width_size = env.env.env.crop
+            else:
+                height_size, width_size = env.env.env.camera_height, env.env.env.camera_width
             rgbd = True # means color image
             hidden_visual = self._create_visual_encoder(height_size, width_size, rgbd, h_size, 2, tf.nn.elu, num_layers)
 

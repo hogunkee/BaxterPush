@@ -61,11 +61,11 @@ class BaxterEnv():
                 np.array([0.0, 0.0, 0.0, 1.0])))
             target = self.env.model.worldbody.find("./body[@name='target']")
             target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
-        print('Block init positions:')
-        print(init_pos)
-        print(self.goal)
-        print()
-        # obj_id = self.env.sim.model.body_name2id("target")
+        # print('Block init positions:')
+        # print(init_pos)
+        # print(self.goal)
+        # print()
+        # # obj_id = self.env.sim.model.body_name2id("target")
         # self.env.model.worldbody.find("./body[@name='target']").set("pos", array_to_string(self.goal))
 
         self.env.reset()
@@ -91,7 +91,12 @@ class BaxterEnv():
         if self.using_feature:
             return np.concatenate([self.state[6:9], self.obj_pos, self.target_pos], axis=0)
         else:
-            im_1, im_2 = self.get_camera_obs()
+            ## visualizing observations ##
+            # im_1, im_2 = self.get_camera_obs()
+            # fig, ax = plt.subplots(1, 2)
+            # ax[0].imshow(im_1)
+            # ax[1].imshow(im_2)
+            # plt.show()
             return [im_1, im_2]
 
 
@@ -182,7 +187,7 @@ class BaxterEnv():
         far = self.env.mjpy_model.vis.map.zfar * extent
 
         im_depth = near / (1 - ddd * (1 - near / far))
-        im_rgb = rgb
+        im_rgb = rgb / 255.0
         im_1 = np.concatenate((im_rgb, im_depth[..., np.newaxis]), axis=2)
         im_1 = np.flip(im_1, axis=0)
 
@@ -199,9 +204,16 @@ class BaxterEnv():
         far = self.env.mjpy_model.vis.map.zfar * extent
 
         im_depth = near / (1 - ddd * (1 - near / far))
-        im_rgb = rgb
+        im_rgb = rgb / 255.0
         im_2 = np.concatenate((im_rgb, im_depth[..., np.newaxis]), axis=2)
         im_2 = np.flip(im_2, axis=0)
+
+        crop = self.env.crop
+        if crop is not None:
+            im_1 = im_1[(self.env.camera_width - crop) // 2:(self.env.camera_width + crop) // 2, \
+                  (self.env.camera_height - crop) // 2:(self.env.camera_height + crop) // 2, :]
+            im_2 = im_2[(self.env.camera_width - crop) // 2:(self.env.camera_width + crop) // 2, \
+                   (self.env.camera_height - crop) // 2:(self.env.camera_height + crop) // 2, :]
 
         return [im_1, im_2]
 
