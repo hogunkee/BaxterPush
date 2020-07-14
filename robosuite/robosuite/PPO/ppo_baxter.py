@@ -36,7 +36,7 @@ hidden_units = 128
 # lambd=<n>                Lambda parameter for GAE [default: 0.95].
 lambd = 0.95
 # learning-rate=<rate>     Model learning rate [default: 3e-4].
-learning_rate = 3e-4 #4e-5
+learning_rate = 4e-5
 # max-steps=<n>            Maximum number of steps to run environment [default: 1e6].
 max_steps = 3e4 #15e6
 # normalize                Activate state normalization for this many steps and freeze statistics afterwards.
@@ -216,7 +216,7 @@ with tf.Session() as sess:
     # Final save Tensorflow model
     if steps != 0 and train_model:
         save_model(sess=sess, model_path=model_path, steps=steps, saver=saver)
-env.close()
+#env.close()
 export_graph(model_path, env_name)
 os.system("shutdown")
 
