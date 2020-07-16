@@ -23,14 +23,21 @@ class BaxterEnv():
     def __init__(self, env, task='push', render=True, using_feature=False):
         self.env = env
         self.task = task # 'reach', 'push' or 'pick'
-        self.action_space = spaces.Discrete(12)
+        if task=='reach':
+            action_size = 8
+        elif task=='push':
+            action_size = 12
+        elif task=='pick':
+            action_size = 12
+        self.action_space = spaces.Discrete(action_size)
+        self.action_size = action_size
         self.state = None
         self.grasp = None
         self.init_obj_pos = None
         self.obj_pos = None
         self.target_pos = None
 
-        self.action_size = 12
+
         self.render = render
         self.using_feature = using_feature
 
@@ -107,20 +114,18 @@ class BaxterEnv():
         # 8
         # gripper open and close
         action = action[0][0]
-        mov_degree = action * np.pi / 4.0
-        mov_dist = 0.05 #0.03
+        mov_dist = 0.04 #0.03
 
         self.pre_arm_pos = self.arm_pos.copy()
-        if action == 0:
+        if action < 8:
+            mov_degree = action * np.pi / 4.0
+            self.arm_pos = self.arm_pos + np.array([mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree), 0.0])
+        elif action == 8:
             self.arm_pos = self.arm_pos + np.array([0.0, 0.0, mov_dist])
             # self.state[6:9] = self.state[6:9] + np.array([0.0, 0.0, mov_dist])
-        if action == 1:
+        elif action == 9:
             self.arm_pos = self.arm_pos + np.array([0.0, 0.0, -mov_dist])
             # self.state[6:9] = self.state[6:9] + np.array([0.0, 0.0, -mov_dist])
-        elif action > 1 and action < 10:
-            mov_degree = (action - 2) * np.pi / 4.0
-            self.arm_pos = self.arm_pos + np.array([mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree), 0.0])
-            # self.state[6:9] = self.state[6:9] + np.array([mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree), 0.0])
         elif action == 10:
             self.grasp = 1.00
         elif action == 11:
@@ -162,11 +167,21 @@ class BaxterEnv():
                 d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
                 d2 = np.linalg.norm(self.arm_pos[:2] - self.target_pos[:2])
                 d2_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_target_pos[:2])
-                if d1 > 0.025 and d2 > 0.025:
-                    reward = 10 * np.max([np.exp(-d1) - np.exp(-d1_old), np.exp(-d2) - np.exp(-d2_old)])   # range: 0~5
-                else:
-                    reward = 10
+                if d1 < 0.025: # or d2 < 0.025:
+                    reward = 100
                     done = True
+                elif d1_old - d1 > 0.03: # or d2_old - d2 > 0.02:
+                    reward = 1.0
+                elif d1 - d1_old > 0.03: # or d2 - d2_old> 0.02:
+                    reward = -1.0
+                else:
+                    reward = -0.1
+                # if d1 > 0.025 and d2 > 0.025:
+                #     step_penalty = 0.1
+                #     reward = 10 * np.max([np.exp(-d1) - np.exp(-d1_old), np.exp(-d2) - np.exp(-d2_old)]) - step_penalty  # range: 0~5 - 0.1
+                # else:
+                #     reward = 100
+                #     done = True
 
         elif self.task == 'push':
             C1 = 1

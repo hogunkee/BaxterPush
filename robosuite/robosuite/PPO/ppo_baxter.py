@@ -222,6 +222,6 @@ with tf.Session() as sess:
     if steps != 0 and train_model:
         save_model(sess=sess, model_path=model_path, steps=steps, saver=saver)
 #env.close()
-export_graph(model_path, env_name)
+export_graph(model_path, env_name="BaxterEnv")
 os.system("shutdown")
 
