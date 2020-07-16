@@ -78,6 +78,10 @@ class Trainer(object):
         if not stochastic:
             actions = actions_max
         new_obs, reward, terminal, _ = env.step(actions)
+
+        # fake done
+        if reward==100 and terminal:
+            terminal = False
         self.add_experiences(obs, [reward], epsi, actions, a_dist, value)
         return new_obs
 

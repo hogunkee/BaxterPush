@@ -191,15 +191,15 @@ with tf.Session() as sess:
         # else:
         #     sleep(1)
         if len(trainer.training_buffer['actions']) > buffer_size and train_model:
-            if render:
-                renderthread.pause()
+            # if render:
+            #     renderthread.pause()
             print("Optimizing...")
             t = time.time()
             # Perform gradient descent with experience buffer
             trainer.update_model(batch_size, num_epoch)
             print("Optimization finished in {:.1f} seconds.".format(float(time.time() - t)))
-            if render:
-                renderthread.resume()
+            # if render:
+            #     renderthread.resume()
         if steps % summary_freq == 0 and steps != 0 and train_model:
             # Write training statistics to tensorboard.
             trainer.write_summary(summary_writer, steps)

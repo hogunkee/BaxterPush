@@ -29,6 +29,7 @@ class BaxterEnv():
             action_size = 12
         elif task=='pick':
             action_size = 12
+        self.mov_dist = 0.04 #0.03
         self.action_space = spaces.Discrete(action_size)
         self.action_size = action_size
         self.state = None
@@ -37,13 +38,14 @@ class BaxterEnv():
         self.obj_pos = None
         self.target_pos = None
 
-
         self.render = render
         self.using_feature = using_feature
+        self.max_step = 100
 
         self.global_done = False
 
     def reset(self):
+        self.step_count = 0
         arena_pos = self.env.env.mujoco_arena.bin_abs
         self.state = np.array([0.4, 0.6, 1.0, 0.0, 0.0, 0.0, 0.4, -0.6, 1.0, 0.0, 0.0, 0.0])
         self.grasp = 0.0
@@ -113,8 +115,9 @@ class BaxterEnv():
         # 1 0
         # 8
         # gripper open and close
+        self.step_count += 1
         action = action[0][0]
-        mov_dist = 0.04 #0.03
+        mov_dist = self.mov_dist
 
         self.pre_arm_pos = self.arm_pos.copy()
         if action < 8:
@@ -160,8 +163,9 @@ class BaxterEnv():
         reward = 0.0
         if self.task == 'reach':
             if stucked == -1 or 1 - np.abs(self.env.env._right_hand_quat[1]) > 0.01:
-                reward = np.exp(-1.0 * np.min([np.linalg.norm(self.state[6:9]-self.obj_pos), np.linalg.norm(self.state[6:9]-self.target_pos)]))
+                reward = 0.0 #np.exp(-1.0 * np.min([np.linalg.norm(self.state[6:9]-self.obj_pos), np.linalg.norm(self.state[6:9]-self.target_pos)]))
                 done = True
+                print('episode done. [STUCKED]')
             else:
                 d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
                 d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
@@ -170,9 +174,10 @@ class BaxterEnv():
                 if d1 < 0.025: # or d2 < 0.025:
                     reward = 100
                     done = True
-                elif d1_old - d1 > 0.03: # or d2_old - d2 > 0.02:
+                    print('episode done. [SUCCESS]')
+                elif d1_old - d1 > self.mov_dist/2: # or d2_old - d2 > 0.02:
                     reward = 1.0
-                elif d1 - d1_old > 0.03: # or d2 - d2_old> 0.02:
+                elif d1 - d1_old > self.mov_dist/2: # or d2 - d2_old> 0.02:
                     reward = -1.0
                 else:
                     reward = -0.1
@@ -216,7 +221,10 @@ class BaxterEnv():
             im_1, im_2 = self.get_camera_obs()
             state = [im_1, im_2]
 
-        # print('reward:', reward)
+        print('reward:', reward)
+        if self.step_count >= self.max_step:
+            done = True
+            print('Episode stopped. (max step)')
         return state, reward, done, {}
 
     def get_camera_obs(self):
