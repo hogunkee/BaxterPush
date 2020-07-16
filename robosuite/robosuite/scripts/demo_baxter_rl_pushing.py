@@ -49,7 +49,7 @@ class BaxterEnv():
         arena_pos = self.env.env.mujoco_arena.bin_abs
         self.state = np.array([0.4, 0.6, 1.0, 0.0, 0.0, 0.0, 0.4, -0.6, 1.0, 0.0, 0.0, 0.0])
         self.grasp = 0.0
-        init_pos = arena_pos + np.array([0.3, 0.3, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])
+        init_pos = arena_pos + np.array([0.3, 0.3, 0.0]) # * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])
         # init_pos = arena_pos + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])
         # init_pos = arena_pos + np.array([0.08, 0.0, 0.0]) + np.array([0.0, 0.0, 0.1])
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
@@ -57,7 +57,6 @@ class BaxterEnv():
         self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16]) #0.06
 
         #self.goal = np.array([0.4, -0.6, 1.0]) + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3)
-        '''
         if self.task == 'pick':
             self.goal = init_pos
             target = self.env.model.worldbody.find("./body[@name='target']")
@@ -71,7 +70,6 @@ class BaxterEnv():
                 np.array([0.0, 0.0, 0.0, 1.0])))
             target = self.env.model.worldbody.find("./body[@name='target']")
             target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
-        '''
         # print('Block init positions:')
         # print(init_pos)
         # print(self.goal)
@@ -173,10 +171,15 @@ class BaxterEnv():
                 d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
                 d2 = np.linalg.norm(self.arm_pos[:2] - self.target_pos[:2])
                 d2_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_target_pos[:2])
-                if d1 < self.mov_dist/2: # or d2 < 0.025:
-                    reward = 100
-                    done = True
+                if d1 < self.mov_dist:
+                    if d1_old > self.mov_dist:
+                        reward = 5
+                    if d1 < self.mov_dist/2: # or d2 < 0.025:
+                        reward = 100
+                        done = True
                     print('episode done. [SUCCESS]')
+                elif d1 > self.mov_dist and d1_old < self.mov_dist:
+                    reward = -5
                 elif d1_old - d1 > self.mov_dist/2: # or d2_old - d2 > 0.02:
                     reward = 1.0
                 elif d1 - d1_old > self.mov_dist/2: # or d2 - d2_old> 0.02:
