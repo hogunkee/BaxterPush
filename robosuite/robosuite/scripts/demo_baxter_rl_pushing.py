@@ -87,11 +87,10 @@ class BaxterEnv():
         self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
         self.pre_obj_pos = self.obj_pos
 
-        if self.task == 'reach' or self.task == 'push':
-            self.target_id = self.env.obj_body_id['CustomObject_1']
-            self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
-            self.pre_vec = self.target_pos - self.obj_pos
-            self.pre_target_pos = self.target_pos
+        self.target_id = self.env.obj_body_id['CustomObject_1']
+        self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
+        self.pre_vec = self.target_pos - self.obj_pos
+        self.pre_target_pos = self.target_pos
 
         # self.state[6:9] = self.env._r_eef_xpos
         self.arm_pos = self.env._r_eef_xpos
@@ -136,15 +135,13 @@ class BaxterEnv():
         #obj_id = self.env.obj_body_id['CustomObject_0']
         #obj_pos = self.env.sim.data.body_xpos[obj_id]
         # self.pre_arm_pos = self.env._r_eef_xpos.copy()
+        self.pre_obj_pos = self.obj_pos.copy()
         stucked = move_to_6Dpos(self.env, None, None, self.arm_pos, self.state[9:12], arm='right', left_grasp=0.0,
                                 right_grasp=self.grasp, level=1.0, render=self.render)
-        # print(2, self.env._r_eef_xpos)
-        # stucked = move_to_6Dpos(self.env, None, None, self.state[6:9], self.state[9:12], arm='right', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
         self.state[6:9] = self.env._r_eef_xpos
         self.arm_pos = self.state[6:9]
-        # obj_id = self.env.obj_body_id['CustomObject_0']
-        self.pre_obj_pos = self.obj_pos
         self.obj_pos = self.env.sim.data.body_xpos[self.obj_id]
+
         # self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
         if self.task == 'reach' or self.task == 'push':
             self.pre_target_pos = self.target_pos
@@ -168,8 +165,8 @@ class BaxterEnv():
             else:
                 d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
                 d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
-                d2 = np.linalg.norm(self.arm_pos[:2] - self.target_pos[:2])
-                d2_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_target_pos[:2])
+                # d2 = np.linalg.norm(self.arm_pos[:2] - self.target_pos[:2])
+                # d2_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_target_pos[:2])
                 if d1 < self.mov_dist:
                     if d1_old > self.mov_dist:
                         reward = 5
@@ -196,22 +193,48 @@ class BaxterEnv():
             C1 = 1
             C2 = 100
             if stucked==-1 or 1-np.abs(self.env.env._right_hand_quat[1]) > 0.01:
-                reward = np.exp(-1.0 * np.min([np.linalg.norm(self.state[6:9]-self.obj_pos), np.linalg.norm(self.state[6:9]-self.target_pos)]))
+                reward = 0.0
+                # reward = np.exp(-1.0 * np.min([np.linalg.norm(self.state[6:9]-self.obj_pos), np.linalg.norm(self.state[6:9]-self.target_pos)]))
                 # reward = - C1 * np.min([np.linalg.norm(self.target_pos - self.state[6:9]), np.linalg.norm(self.obj_pos - self.state[6:9])])
                 # reward = -10
                 done = True
                 print('episode done. [STUCKED]')
             else:
-                distance_reward = np.exp( 50*(- np.linalg.norm(vec) + np.linalg.norm(self.pre_vec)) ) - 1
-                touching_reward = np.linalg.norm(self.obj_pos - self.pre_obj_pos) + np.linalg.norm(self.target_pos - self.pre_target_pos)
-                step_penalty = 0.0 #0.1
-                reward = C1 * distance_reward + C2 * touching_reward - step_penalty
-                self.pre_vec = vec
-
                 if np.linalg.norm(vec) < 0.10: #0.05
                     reward = 100
                     done = True
                     print('episode done. [SUCCESS]')
+
+                # print('=' * 30)
+                # print(self.obj_pos)
+                # print(self.pre_obj_pos)
+                # print(self.obj_pos - self.pre_obj_pos)
+                # print('='*30)
+                x = np.linalg.norm(vec)
+                x_old = np.linalg.norm(self.pre_vec)
+                d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
+                d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
+                # get away #
+                if d1 > 0.4:
+                    reward = -5
+                    done = True
+                elif d1 > 2 * self.mov_dist:
+                    reward = -0.5
+                # moving distance reward #
+                elif x_old - x > 0.01:
+                    reward = 100 * (x_old - x)
+                # touching reward #
+                elif np.linalg.norm(self.obj_pos - self.pre_obj_pos) > 0.01:
+                    reward = 1.0
+                # step penalty #
+                else:
+                    reward = 0.0
+
+                # distance_reward = np.exp( 50*(- np.linalg.norm(vec) + np.linalg.norm(self.pre_vec)) ) - 1
+                # touching_reward = np.linalg.norm(self.obj_pos - self.pre_obj_pos) + np.linalg.norm(self.target_pos - self.pre_target_pos)
+                # step_penalty = 0.0 #0.1
+                # reward = C1 * distance_reward + C2 * touching_reward - step_penalty
+                self.pre_vec = vec
 
         elif self.task == 'pick':
             if self.obj_pos[2] - self.init_obj_pos[2] > 0.3:
