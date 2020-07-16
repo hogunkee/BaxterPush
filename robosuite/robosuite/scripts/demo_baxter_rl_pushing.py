@@ -52,35 +52,33 @@ class BaxterEnv():
 
         self.env.reset()
         init_pos = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])
-        # init_pos = arena_pos + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])
-        # init_pos = arena_pos + np.array([0.08, 0.0, 0.0]) + np.array([0.0, 0.0, 0.1])
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
         self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16]) #0.06
 
-        #self.goal = np.array([0.4, -0.6, 1.0]) + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3)
-        if self.task == 'pick':
-            self.goal = init_pos
-            target = self.env.model.worldbody.find("./body[@name='target']")
-            target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
-        elif self.task == 'reach' or self.task == 'push':
-            self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1]) #0.025
-            while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < 0.3: # <0.08
-                self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1]) #0.025
-            self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
-            self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(
-                np.array([0.0, 0.0, 0.0, 1.0])))
-            target = self.env.model.worldbody.find("./body[@name='target']")
-            target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
+        self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array(
+            [0.0, 0.0, 0.1])  # 0.025
+        while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < 0.3:  # <0.08
+            self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0,
+                                                                                  size=3) + np.array(
+                [0.0, 0.0, 0.1])  # 0.025
+        self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
+        self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(
+            np.array([0.0, 0.0, 0.0, 1.0])))
+        target = self.env.model.worldbody.find("./body[@name='target']")
+        target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
+
+        if self.task == 'push' or self.task == 'pick':
+            self.state[6:9] = init_pos + np.array([self.mov_dist/2, self.mov_dist/2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0., 0., 0.06])
+
+        self.env.reset_sims()
+        # self.env.reset_arms(qpos=INIT_ARM_POS)
+
         # print('Block init positions:')
         # print(init_pos)
         # print(self.goal)
         # print()
-        # # obj_id = self.env.sim.model.body_name2id("target")
-        # self.env.model.worldbody.find("./body[@name='target']").set("pos", array_to_string(self.goal))
 
-        self.env.reset_sims()
-        # self.env.reset_arms(qpos=INIT_ARM_POS)
         stucked = move_to_pos(self.env, [0.4, 0.6, 1.0], [0.4, -0.6, 1.0], arm='both', level=1.0, render=self.render)
         stucked = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9], self.state[9:12], arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
 
