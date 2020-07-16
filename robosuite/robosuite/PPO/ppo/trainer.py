@@ -98,9 +98,9 @@ class Trainer(object):
         for (agent, history) in self.history_dict.items():
             idx = 0
             if self.use_observations:
-                history['observations'].append([np.array(obs)]) #[obs[idx]])
+                history['observations'].append(np.array([obs])) #[obs[idx]])
             if self.use_states:
-                history['states'].append(obs) #obs[idx]
+                history['states'].append(np.array([obs])) #obs[idx]
             if self.is_continuous:
                 history['epsilons'].append(epsi[idx])
             history['actions'].append(actions[idx])
@@ -129,7 +129,7 @@ class Trainer(object):
                 if self.use_observations:
                     feed_dict[self.model.observation_in] = np.array([obs]) # np.vstack(obs)
                 if self.use_states:
-                    feed_dict[self.model.state_in] = obs
+                    feed_dict[self.model.state_in] = np.array([obs]) # obs
                 value_next = self.sess.run(self.model.value, feed_dict)[0]
             history = vectorize_history(self.history_dict[agent])
             history['advantages'] = get_gae(rewards=history['rewards'],

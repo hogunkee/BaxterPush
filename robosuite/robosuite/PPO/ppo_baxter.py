@@ -46,7 +46,7 @@ num_epoch = 10
 # num-layers=<n>           Number of hidden layers between state/observation and outputs [default: 2].
 num_layers = 1
 # time-horizon=<n>         How many steps to collect per agent before adding to buffer [default: 2048].
-time_horizon = 512 #2048
+time_horizon = 128 #512 #2048
 
 # General parameters
 # keep-checkpoints=<n>     How many model checkpoints to keep [default: 5].

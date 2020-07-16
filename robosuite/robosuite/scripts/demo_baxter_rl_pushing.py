@@ -40,12 +40,12 @@ class BaxterEnv():
 
         self.render = render
         self.using_feature = using_feature
-        self.max_step = 100
+        # self.max_step = 100
 
         self.global_done = False
 
     def reset(self):
-        self.step_count = 0
+        # self.step_count = 0
         arena_pos = self.env.env.mujoco_arena.bin_abs
         self.state = np.array([0.4, 0.6, 1.0, 0.0, 0.0, 0.0, 0.4, -0.6, 1.0, 0.0, 0.0, 0.0])
         self.grasp = 0.0
@@ -57,6 +57,7 @@ class BaxterEnv():
         self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16]) #0.06
 
         #self.goal = np.array([0.4, -0.6, 1.0]) + np.array([0.16, 0.16, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3)
+        '''
         if self.task == 'pick':
             self.goal = init_pos
             target = self.env.model.worldbody.find("./body[@name='target']")
@@ -70,6 +71,7 @@ class BaxterEnv():
                 np.array([0.0, 0.0, 0.0, 1.0])))
             target = self.env.model.worldbody.find("./body[@name='target']")
             target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
+        '''
         # print('Block init positions:')
         # print(init_pos)
         # print(self.goal)
@@ -115,7 +117,7 @@ class BaxterEnv():
         # 1 0
         # 8
         # gripper open and close
-        self.step_count += 1
+        # self.step_count += 1
         action = action[0][0]
         mov_dist = self.mov_dist
 
@@ -214,6 +216,10 @@ class BaxterEnv():
                 done = True
                 reward = 100
 
+        # if self.step_count >= self.max_step:
+        #     done = True
+        #     print('Episode stopped. (max step)')
+
         self.global_done = done
         if self.using_feature:
             state = np.concatenate([self.state[6:9], self.obj_pos, self.target_pos], axis=0)
@@ -222,9 +228,6 @@ class BaxterEnv():
             state = [im_1, im_2]
 
         # print('reward:', reward)
-        if self.step_count >= self.max_step:
-            done = True
-            print('Episode stopped. (max step)')
         return state, reward, done, {}
 
     def get_camera_obs(self):
