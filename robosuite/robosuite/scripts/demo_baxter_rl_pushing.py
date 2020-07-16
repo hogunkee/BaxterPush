@@ -171,7 +171,7 @@ class BaxterEnv():
                 d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
                 d2 = np.linalg.norm(self.arm_pos[:2] - self.target_pos[:2])
                 d2_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_target_pos[:2])
-                if d1 < 0.025: # or d2 < 0.025:
+                if d1 < self.mov_dist/2: # or d2 < 0.025:
                     reward = 100
                     done = True
                     print('episode done. [SUCCESS]')
