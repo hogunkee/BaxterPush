@@ -40,12 +40,12 @@ class BaxterEnv():
 
         self.render = render
         self.using_feature = using_feature
-        # self.max_step = 100
+        self.max_step = 100
 
         self.global_done = False
 
     def reset(self):
-        # self.step_count = 0
+        self.step_count = 0
         arena_pos = self.env.env.mujoco_arena.bin_abs
         self.state = np.array([0.4, 0.6, 1.0, 0.0, 0.0, 0.0, 0.4, -0.6, 1.0, 0.0, 0.0, 0.0])
         self.grasp = 0.0
@@ -113,7 +113,7 @@ class BaxterEnv():
         # 1 0
         # 8
         # gripper open and close
-        # self.step_count += 1
+        self.step_count += 1
         action = action[0][0]
         mov_dist = self.mov_dist
 
@@ -241,9 +241,9 @@ class BaxterEnv():
                 done = True
                 reward = 100
 
-        # if self.step_count >= self.max_step:
-        #     done = True
-        #     print('Episode stopped. (max step)')
+        if self.step_count >= self.max_step:
+            done = True
+            print('Episode stopped. (max step)')
 
         self.global_done = done
         if self.using_feature:
