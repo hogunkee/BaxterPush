@@ -51,13 +51,14 @@ class BaxterEnv():
         self.grasp = 0.0
 
         self.env.reset()
-        init_pos = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])
+        init_pos = arena_pos + np.array([0.15, 0.10, 0.0]) + np.array([0.0, 0.0, 0.1])
+        # init_pos = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
         self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16]) #0.06
 
-        self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array(
-            [0.0, 0.0, 0.1])  # 0.025
+        self.goal = arena_pos + np.array([-0.05, -0.15, 0.0]) + np.array([0.0, 0.0, 0.1])  # 0.025
+        # self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])  # 0.025
         while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < 0.3:  # <0.08
             self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0,
                                                                                   size=3) + np.array(

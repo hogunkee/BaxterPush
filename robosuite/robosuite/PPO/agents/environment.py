@@ -49,7 +49,9 @@ class GymEnvironment(object):
             self.ob_space_type = "discrete"
             self.ob_space_size = ob_space.n
         else:
-            raise NotImplementedError
+            self.ob_space_type = "continuous"
+            self.ob_space_size = 25
+            # raise NotImplementedError
 
         self._data = {}
         self._log_path = log_path

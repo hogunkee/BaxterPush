@@ -3,7 +3,7 @@ import sys
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(FILE_PATH, '../..'))
 sys.path.append(os.path.join(FILE_PATH, '..', 'scripts'))
-from demo_baxter_rl_pushing import *
+# from demo_baxter_rl_pushing import *
 
 import shutil
 import time
@@ -12,6 +12,7 @@ from time import sleep
 from ppo.renderthread import RenderThread
 from ppo.models import *
 from ppo.trainer import Trainer
+from agents import GymEnvironment
 
 import datetime
 import tensorflow as tf
@@ -38,7 +39,7 @@ lambd = 0.95
 # learning-rate=<rate>     Model learning rate [default: 3e-4].
 learning_rate = 4e-5
 # max-steps=<n>            Maximum number of steps to run environment [default: 1e6].
-max_steps = 3e5 #15e6
+max_steps = 3e4 #15e6
 # normalize                Activate state normalization for this many steps and freeze statistics afterwards.
 normalize_steps = 0
 # num-epoch=<n>            Number of gradient descent steps per batch of experiences [default: 5].
@@ -64,7 +65,7 @@ save_freq = 500 #summary_freq
 flags.DEFINE_integer('use_feature', 0, 'using feature-base states or image-base states.')
 flags.DEFINE_integer('train', 1, 'Train a new model or test the trained model.')
 flags.DEFINE_string('model_name', None, 'name of trained model')
-flags.DEFINE_string('task', 'reach', 'name of task: reach / push / pick')
+# flags.DEFINE_string('task', 'reach', 'name of task: reach / push / pick')
 
 FLAGS = flags.FLAGS
 using_feature = (FLAGS.use_feature==1)
@@ -82,7 +83,7 @@ else:
     render = True
     train_model = False
 
-task = FLAGS.task
+task = 'gym'
 
 if FLAGS.model_name:
     model_path = os.path.join(model_path, FLAGS.model_name)
@@ -90,9 +91,8 @@ if FLAGS.model_name:
     assert task in FLAGS.model_name
 else:
     now = datetime.datetime.now()
-    base = 'fb' if using_feature else 'ib'
-    model_path = os.path.join(model_path, task + '_' + base + '_' + now.strftime("%m%d_%H%M%S"))
-    summary_path = os.path.join(summary_path, task + '_' + base + '_' + now.strftime("%m%d_%H%M%S"))
+    model_path = os.path.join(model_path, task + '_' + now.strftime("%m%d_%H%M%S"))
+    summary_path = os.path.join(summary_path, task + '_' + now.strftime("%m%d_%H%M%S"))
 
 # load                     Whether to load the model or randomly initialize [default: False].
 # load_model = True #False #True
@@ -111,31 +111,9 @@ crop = None #64 #None
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # GPU is not efficient here
 
-env = robosuite.make(
-    "BaxterPush",
-    bin_type='table',
-    object_type='cube',
-    ignore_done=True,
-    has_renderer=True,
-    camera_name="eye_on_right_wrist",
-    gripper_visualization=False,
-    use_camera_obs=False,
-    use_object_obs=False,
-    camera_depth=True,
-    num_objects=2,
-    control_freq=100,
-    camera_width=screen_width,
-    camera_height=screen_height,
-    crop=crop
-)
-env = IKWrapper(env)
-env = BaxterEnv(env, task=task, render=render, using_feature=using_feature)
-# env_name = 'RocketLander-v0'
-# env = GymEnvironment(env_name=env_name, log_path="./PPO_log", skip_frames=6)
-# env_render = GymEnvironment(env_name=env_name, log_path="./PPO_log_render", render=True, record=record)
-# fps = env_render.env.metadata.get('video.frames_per_second', 30)
-
-# print(str(env))
+env_name = 'FetchPush-v1'
+env = GymEnvironment(env_name=env_name, log_path="./PPO_log")#, skip_frames=6)
+print(str(env))
 # brain_name = env.external_brain_names[0]
 
 tf.reset_default_graph()
