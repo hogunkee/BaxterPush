@@ -42,6 +42,8 @@ class BaxterEnv():
         self.using_feature = using_feature
         self.max_step = 100
 
+        self.min_reach_dist = None  # for 'reach' task
+
         self.global_done = False
 
     def reset(self):
@@ -97,6 +99,9 @@ class BaxterEnv():
         self.arm_pos = self.env._r_eef_xpos
         self.pre_arm_pos = self.arm_pos
         self.global_done = False
+
+        if self.task == 'reach':
+            self.min_reach_dist = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
 
         if self.using_feature:
             return np.concatenate([self.state[6:9], self.obj_pos, self.target_pos], axis=0)
@@ -160,11 +165,22 @@ class BaxterEnv():
         reward = 0.0
         if self.task == 'reach':
             if stucked == -1 or 1 - np.abs(self.env.env._right_hand_quat[1]) > 0.01:
-                reward = 0.0 #np.exp(-1.0 * np.min([np.linalg.norm(self.state[6:9]-self.obj_pos), np.linalg.norm(self.state[6:9]-self.target_pos)]))
+                reward = -5.0 #0.0 #np.exp(-1.0 * np.min([np.linalg.norm(self.state[6:9]-self.obj_pos), np.linalg.norm(self.state[6:9]-self.target_pos)]))
                 done = True
                 print('episode done. [STUCKED]')
             else:
                 d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
+
+                if d1 < self.mov_dist / 2:  # or d2 < 0.025:
+                    reward = 100
+                    done = True
+                    print('episode done. [SUCCESS]')
+                elif d1 < self.min_reach_dist - 0.001:
+                    self.min_reach_dist = d1
+                    reward = 1.0
+                else:
+                    reward = -0.1
+                '''
                 d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
                 # d2 = np.linalg.norm(self.arm_pos[:2] - self.target_pos[:2])
                 # d2_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_target_pos[:2])
@@ -174,7 +190,7 @@ class BaxterEnv():
                     if d1 < self.mov_dist/2: # or d2 < 0.025:
                         reward = 100
                         done = True
-                    print('episode done. [SUCCESS]')
+                        print('episode done. [SUCCESS]')
                 elif d1 > self.mov_dist and d1_old < self.mov_dist:
                     reward = -5
                 elif d1_old - d1 > self.mov_dist/2: # or d2_old - d2 > 0.02:
@@ -189,15 +205,15 @@ class BaxterEnv():
                 # else:
                 #     reward = 100
                 #     done = True
+                '''
 
         elif self.task == 'push':
             C1 = 1
             C2 = 100
             if stucked==-1 or 1-np.abs(self.env.env._right_hand_quat[1]) > 0.01:
-                reward = 0.0
                 # reward = np.exp(-1.0 * np.min([np.linalg.norm(self.state[6:9]-self.obj_pos), np.linalg.norm(self.state[6:9]-self.target_pos)]))
                 # reward = - C1 * np.min([np.linalg.norm(self.target_pos - self.state[6:9]), np.linalg.norm(self.obj_pos - self.state[6:9])])
-                # reward = -10
+                reward = -10
                 done = True
                 print('episode done. [STUCKED]')
             else:
@@ -223,7 +239,7 @@ class BaxterEnv():
                     reward = -0.5
                 # moving distance reward #
                 elif x_old - x > 0.01:
-                    reward = 100 * (x_old - x)
+                    reward = 2.0 # 100 * (x_old - x)
                 # touching reward #
                 elif np.linalg.norm(self.obj_pos - self.pre_obj_pos) > 0.01:
                     reward = 1.0
