@@ -6,9 +6,9 @@ sys.path.append(os.path.join(FILE_PATH, '..', 'scripts'))
 from demo_baxter_rl_pushing import *
 
 
-task = 'push'
+task = 'reach' #'push'
 render = True
-using_feature = True
+using_feature = False #True
 
 screen_width = 64 #96
 screen_height = 64 #96
@@ -43,7 +43,7 @@ for _ in range(1000):
         break
     # action = env.action_space.sample()
     obs, reward, done, info = env.step(action)
-    print("Action: {} Observations Size:{} score: {}".format(action,obs.shape,reward))
+    print("Action: {},  reward: {}".format(action, reward))
     if done:
         obs = env.reset()
         print('Episode restart.')

@@ -22,7 +22,7 @@ flags = tf.app.flags
 
 # Algorithm parameters
 # batch-size=<n>           How many experiences per gradient descent update step [default: 64].
-batch_size = 32
+batch_size = 512
 # beta=<n>                 Strength of entropy regularization [default: 2.5e-3].
 beta = 2.5e-3
 # buffer-size=<n>          How large the experience buffer should be before gradient descent [default: 2048].
@@ -36,7 +36,7 @@ hidden_units = 128
 # lambd=<n>                Lambda parameter for GAE [default: 0.95].
 lambd = 0.95
 # learning-rate=<rate>     Model learning rate [default: 3e-4].
-learning_rate = 4e-5
+learning_rate = 3e-4 #4e-5
 # max-steps=<n>            Maximum number of steps to run environment [default: 1e6].
 max_steps = 3e5 #15e6
 # normalize                Activate state normalization for this many steps and freeze statistics afterwards.
@@ -57,9 +57,9 @@ file_path = os.path.dirname(os.path.abspath(__file__))
 summary_path = os.path.join(file_path, 'PPO_summary')
 model_path = os.path.join(file_path, 'models')
 # summary-freq=<n>         Frequency at which to save training statistics [default: 10000].
-summary_freq = 100 #buffer_size * 5
+summary_freq = 500 #100 #buffer_size * 5
 # save-freq=<n>            Frequency at which to save model [default: 50000].
-save_freq = 500 #summary_freq
+save_freq = 2000 #500 #summary_freq
 
 flags.DEFINE_integer('use_feature', 0, 'using feature-base states or image-base states.')
 flags.DEFINE_integer('train', 1, 'Train a new model or test the trained model.')

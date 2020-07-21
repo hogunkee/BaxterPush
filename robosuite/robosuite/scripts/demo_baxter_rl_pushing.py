@@ -20,11 +20,11 @@ INIT_ARM_POS = [0.40933302, -1.24377906, 0.68787495, 2.03907987, -0.27229507, 0.
 from gym import spaces
 
 class BaxterEnv():
-    def __init__(self, env, task='push', render=True, using_feature=False):
+    def __init__(self, env, task='push', render=True, using_feature=False, random_spawn=True):
         self.env = env
         self.task = task # 'reach', 'push' or 'pick'
         if task=='reach':
-            action_size = 8
+            action_size = 10 #8
         elif task=='push':
             action_size = 12
         elif task=='pick':
@@ -38,6 +38,7 @@ class BaxterEnv():
         self.obj_pos = None
         self.target_pos = None
 
+        self.random_spawn = random_spawn
         self.render = render
         self.using_feature = using_feature
         self.max_step = 100
@@ -46,6 +47,7 @@ class BaxterEnv():
 
         self.global_done = False
 
+
     def reset(self):
         self.step_count = 0
         arena_pos = self.env.env.mujoco_arena.bin_abs
@@ -53,18 +55,23 @@ class BaxterEnv():
         self.grasp = 0.0
 
         self.env.reset()
-        init_pos = arena_pos + np.array([0.15, 0.10, 0.0]) + np.array([0.0, 0.0, 0.1])
-        # init_pos = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])
+        if self.random_spawn:
+            init_pos = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])
+        else:
+            init_pos = arena_pos + np.array([0.15, 0.10, 0.0]) + np.array([0.0, 0.0, 0.1])
+
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
         self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16]) #0.06
 
-        self.goal = arena_pos + np.array([-0.05, -0.15, 0.0]) + np.array([0.0, 0.0, 0.1])  # 0.025
-        # self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])  # 0.025
-        while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < 0.3:  # <0.08
-            self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0,
-                                                                                  size=3) + np.array(
-                [0.0, 0.0, 0.1])  # 0.025
+        if self.random_spawn:
+            self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])  # 0.025
+            while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < 0.3:  # <0.08
+                self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * \
+                            np.random.uniform(low=-1.0, high=1.0,size=3) + np.array([0.0, 0.0, 0.1])  # 0.025
+        else:
+            self.goal = arena_pos + np.array([-0.05, -0.15, 0.0]) + np.array([0.0, 0.0, 0.1])  # 0.025
+
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(
             np.array([0.0, 0.0, 0.0, 1.0])))
@@ -169,15 +176,19 @@ class BaxterEnv():
                 done = True
                 print('episode done. [STUCKED]')
             else:
-                d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
+                d1 = np.linalg.norm(self.arm_pos - self.obj_pos)
+                # d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
 
-                if d1 < self.mov_dist / 2:  # or d2 < 0.025:
+                # if d1 < self.mov_dist / 2:  # or d2 < 0.025:
+                if np.linalg.norm(self.obj_pos - self.pre_obj_pos) > 0.005:
                     reward = 100
                     done = True
                     print('episode done. [SUCCESS]')
                 elif d1 < self.min_reach_dist - 0.001:
                     self.min_reach_dist = d1
                     reward = 1.0
+                elif self.arm_pos[2] > self.env.env.mujoco_arena.bin_abs[2] + 0.18:
+                    reward = -0.2
                 else:
                     reward = -0.1
                 '''
