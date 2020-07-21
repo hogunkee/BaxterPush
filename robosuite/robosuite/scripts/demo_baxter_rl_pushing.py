@@ -127,7 +127,7 @@ class BaxterEnv():
         # 8
         # gripper open and close
         self.step_count += 1
-        action = action[0][0]
+        action = np.squeeze(action) #action[0][0]
         mov_dist = self.mov_dist
 
         self.pre_arm_pos = self.arm_pos.copy()

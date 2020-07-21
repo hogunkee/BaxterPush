@@ -14,8 +14,8 @@ from .ops import linear, conv2d, clipped_error
 from .utils import get_time, save_pkl, load_pkl
 
 class Agent(BaseModel):
-  def __init__(self, config, environment, sess):
-    super(Agent, self).__init__(config)
+  def __init__(self, config, environment, task, sess):
+    super(Agent, self).__init__(config, task)
     self.sess = sess
     self.weight_dir = 'weights'
 
@@ -467,7 +467,7 @@ class Agent(BaseModel):
 
       for tag in scalar_summary_tags:
         self.summary_placeholders[tag] = tf.placeholder('float32', None, name=tag.replace(' ', '_'))
-        self.summary_ops[tag]  = tf.summary.scalar("%s-%s/%s" % (self.env_name, self.env_type, tag), self.summary_placeholders[tag])
+        self.summary_ops[tag]  = tf.summary.scalar("%s-%s/%s" % (self.task, self.env_type, tag), self.summary_placeholders[tag])
 
       histogram_summary_tags = ['episode.rewards', 'episode.actions']
 

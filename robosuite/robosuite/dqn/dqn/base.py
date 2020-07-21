@@ -13,9 +13,10 @@ def class_vars(obj):
 
 class BaseModel(object):
   """Abstract object representing an Reader model."""
-  def __init__(self, config):
+  def __init__(self, config, task):
     self._saver = None
     self.config = config
+    self.task = task
 
     now = datetime.datetime.now()
     self.model_time = self.config.model_name if self.config.model_name else now.strftime("%m%d_%H%M%S")
@@ -68,7 +69,7 @@ class BaseModel(object):
 
   @property
   def model_dir(self):
-    model_dir = self.config.env_name
+    model_dir = self.task #self.config.env_name
     model_dir += "/%s" %self.model_time #now.strftime("%m%d_%H%M%S")
     # for k, v in self._attrs.items():
     #   if not k.startswith('_') and k not in ['display']:

@@ -23,6 +23,7 @@ flags.DEFINE_boolean('double_q', True, 'Whether to use double q-learning')
 # Environment
 #flags.DEFINE_string('env_name', 'Breakout-v0', 'The name of gym environment to use')
 flags.DEFINE_integer('action_repeat', 1, 'The number of action to be repeated')
+flags.DEFINE_string('task', 'reach', 'name of task: reach / push / pick')
 
 # Etc
 flags.DEFINE_boolean('use_gpu', True, 'Whether to use gpu or not') # True
@@ -36,15 +37,19 @@ flags.DEFINE_integer('seed', 0, 'random seed')
 flags.DEFINE_integer('num_objects', 2, 'number of objects')
 flags.DEFINE_integer('num_episodes', 10000, 'number of episodes')
 flags.DEFINE_integer('num_steps', 1, 'number of steps')
-flags.DEFINE_boolean('render', False, 'Whether to do rendering or not') #True
-flags.DEFINE_boolean('using_feature', True, 'Whether to using feature states or images')
+flags.DEFINE_integer('render', 0, 'Whether to do rendering or not') #True
+flags.DEFINE_integer('using_feature', 0, 'Whether to using feature states or images')
 flags.DEFINE_string('bin_type', 'table', 'bin type')
 flags.DEFINE_string('object_type', 'cube', 'object type')
-flags.DEFINE_boolean('test', False, 'Test or not')
+flags.DEFINE_integer('test', 0, 'Test or not')
 flags.DEFINE_string('config_file', 'config_example.yaml', 'config file name')
 flags.DEFINE_string('model_name', None, 'name of trained model') #'0707_140753', '0707_145027'
 
 FLAGS = flags.FLAGS
+
+render = (FLAGS.render==1)
+using_feature = (FLAGS.using_feature==1)
+test = (FLAGS.test==1)
 
 # Set random seed
 tf.set_random_seed(FLAGS.random_seed)
@@ -82,10 +87,11 @@ def main(_):
         num_objects=FLAGS.num_objects,
         control_freq=100,
         camera_width=config.screen_width,
-        camera_height=config.screen_height
+        camera_height=config.screen_height,
+        crop=config.crop
     )
     env = IKWrapper(env)
-    env = BaxterEnv(env, task='push', render=FLAGS.render, using_feature=FLAGS.using_feature)
+    env = BaxterEnv(env, task=FLAGS.task, render=render, using_feature=using_feature)
 
     if not tf.test.is_gpu_available() and FLAGS.use_gpu:
       raise Exception("use_gpu flag is true when no GPUs are available")
@@ -93,9 +99,9 @@ def main(_):
     if not FLAGS.use_gpu:
       config.cnn_format = 'NHWC'
 
-    agent = Agent(config, env, sess)
+    agent = Agent(config, env, FLAGS.task, sess)
 
-    if FLAGS.is_train and not FLAGS.test:
+    if FLAGS.is_train and not test:
       agent.train()
     else:
       agent.play()
