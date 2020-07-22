@@ -16,7 +16,6 @@ from robosuite.models.tasks import PushTask, UniformRandomSampler
 
 from mujoco_py import MjSim
 import matplotlib.pyplot as plt
-from robosuite.gqcnn.policy_mujoco import GQCNN
 
 class BaxterPush(BaxterEnv):
     def __init__(
@@ -182,9 +181,6 @@ class BaxterPush(BaxterEnv):
         self.collision_check_geom_ids = [
             self.sim.model._geom_name2id[k] for k in self.collision_check_geom_names
         ]
-
-        # gqcnn policy model
-        self.policy = GQCNN(model_ver, model_name)
 
     def _load_model(self):
         super()._load_model()
@@ -521,51 +517,6 @@ class BaxterPush(BaxterEnv):
         di["depth"] = np.where(di["depth"] > 0.25, di["depth"], 1)
 
         return np.flip(di["image"], axis=0), np.flip(di["depth"], axis=0)
-
-    def gqcnn(self, arm='right', vis_on=False, num_candidates=10):
-        di = super()._get_observation()
-
-        if arm == 'right':
-            camera_obs = self.sim.render(
-                camera_name="eye_on_right_wrist",
-                width=self.camera_width,
-                height=self.camera_height,
-                depth=self.camera_depth
-            )
-        elif arm == 'left':
-            camera_obs = self.sim.render(
-                camera_name="eye_on_left_wrist",
-                width=self.camera_width,
-                height=self.camera_height,
-                depth=self.camera_depth
-            )
-
-        if self.camera_depth:
-            di["image"], ddd = camera_obs
-        else:
-            di["image"] = camera_obs
-
-        '''while np.min(ddd) > 0.8:
-            print("ddd failed")
-            camera_obs = self.sim.render(
-                camera_name=self.camera_name,
-                width=self.camera_width,
-                height=self.camera_height,
-                depth=self.camera_depth
-            )
-            di["image"], ddd = camera_obs'''
-
-        extent = self.mjpy_model.stat.extent
-        near = self.mjpy_model.vis.map.znear * extent
-        far = self.mjpy_model.vis.map.zfar * extent
-
-        di["depth"] = near / (1 - ddd * (1 - near / far))
-        di["depth"] = np.where(di["depth"] > 0.25, di["depth"], 1)
-
-        return self.policy.evaluate_gqcnn(np.flip(di["image"], axis=0), np.flip(di["depth"], axis=0), vis_on=vis_on, num_candidates=num_candidates), np.flip(di["image"], axis=0), np.flip(di["depth"], axis=0)
-        
-        #return self.policy.evaluate_gqcnn(np.flip(di["image"], axis=0), \
-        #        np.flip(di["depth"], axis=0), vis_on=vis_on, num_candidates=num_candidates)
 
     def _get_right_arm_pos(self):
         return self.sim.data.site_xpos[self.right_eef_site_id]

@@ -1,17 +1,12 @@
 import argparse
 import numpy as np
 import time
-from collections.abc import Iterable
 import robosuite
-import robosuite.utils.transform_utils as T
 from robosuite.wrappers import IKWrapper
 import matplotlib.pyplot as plt
 from robosuite.utils.mjcf_utils import array_to_string, string_to_array
 from new_motion_planner import move_to_6Dpos, get_camera_pos, force_gripper, move_to_pos, get_target_pos, get_arm_rotation, object_pass, stop_force_gripper
-from cem_vp import select_vp
-from grasp_network import VPPNET
-import json
-from utility import segmentation_green_object, segmentation_object
+
 
 INIT_ARM_POS = [0.40933302, -1.24377906, 0.68787495, 2.03907987, -0.27229507, 0.8635629,
                 0.46484251, 0.12655639, -0.74606415, -0.15337326, 2.04313409, 0.39049096,

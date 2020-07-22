@@ -163,7 +163,10 @@ tf.set_random_seed(0) #np.random.randint(1024))
 init = tf.global_variables_initializer()
 saver = tf.train.Saver(max_to_keep=keep_checkpoints)
 
-with tf.Session() as sess:
+gpu_config = tf.ConfigProto()
+gpu_config.gpu_options.allow_growth = True
+
+with tf.Session(config=gpu_config) as sess:
     # Instantiate model parameters
     if load_model:
         print('Loading Model...')
