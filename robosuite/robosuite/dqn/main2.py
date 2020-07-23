@@ -19,6 +19,7 @@ flags = tf.app.flags
 flags.DEFINE_string('model', 'm1', 'Type of model')
 flags.DEFINE_boolean('dueling', True, 'Whether to use dueling deep q-network')
 flags.DEFINE_boolean('double_q', True, 'Whether to use double q-learning')
+flags.DEFINE_integer('cutout', 0, 'random cutout - with prob 0.5, 5~20 pixels (default)')
 
 # Environment
 #flags.DEFINE_string('env_name', 'Breakout-v0', 'The name of gym environment to use')
@@ -50,6 +51,7 @@ FLAGS = flags.FLAGS
 render = (FLAGS.render==1)
 using_feature = (FLAGS.using_feature==1)
 test = (FLAGS.test==1)
+cutout = (FLAGS.cutout==1)
 
 # Set random seed
 tf.set_random_seed(FLAGS.random_seed)
@@ -99,7 +101,7 @@ def main(_):
     if not FLAGS.use_gpu:
       config.cnn_format = 'NHWC'
 
-    agent = Agent(config, env, FLAGS.task, sess)
+    agent = Agent(config, env, FLAGS.task, sess, cutout=cutout)
 
     if FLAGS.is_train and not test:
       agent.train()

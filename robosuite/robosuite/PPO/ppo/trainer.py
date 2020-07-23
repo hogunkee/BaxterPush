@@ -1,10 +1,10 @@
 import tensorflow as tf
-
+import random
 from ppo.history import *
 
 
 class Trainer(object):
-    def __init__(self, ppo_model, sess, is_continuous, use_states, training):
+    def __init__(self, ppo_model, sess, is_continuous, use_states, training, cutout=False):
         """
         Responsible for collecting experiences and training PPO model.
         :param ppo_model: Tensorflow graph defining model.
@@ -24,6 +24,7 @@ class Trainer(object):
         self.is_continuous = is_continuous
         self.use_observations = not use_states #use_observations
         self.use_states = use_states
+        self.cutout = cutout
 
     def running_average(self, data, steps, running_mean, running_variance):
         """
@@ -183,7 +184,10 @@ class Trainer(object):
                 if self.use_states:
                     feed_dict[self.model.state_in] = np.vstack(training_buffer['states'][start:end])
                 if self.use_observations:
-                    feed_dict[self.model.observation_in] = np.vstack(training_buffer['observations'][start:end])
+                    observations = np.vstack(training_buffer['observations'][start:end])
+                    if self.cutout:
+                        observations = self.random_cutout(observations)
+                    feed_dict[self.model.observation_in] = observations
                 v_loss, p_loss, _ = self.sess.run([self.model.value_loss, self.model.policy_loss,
                                                    self.model.update_batch], feed_dict=feed_dict)
                 total_v += v_loss
@@ -191,6 +195,24 @@ class Trainer(object):
         self.stats['value_loss'].append(total_v)
         self.stats['policy_loss'].append(total_p)
         self.training_buffer = vectorize_history(empty_local_history()) #{}))
+
+    def random_cutout(self, states, p=0.7, min_cut=5, max_cut=20):
+        n, f, h, w, c = states.shape
+        imgs = states.reshape([n * f, h, w, c])
+
+        w1 = np.random.randint(min_cut, max_cut, 2 * n)
+        h1 = np.random.randint(min_cut, max_cut, 2 * n)
+        cw1 = np.random.randint(0, w - max_cut, 2 * n)
+        ch1 = np.random.randint(0, h - max_cut, 2 * n)
+        cutouts = np.empty((n * f, h, w, c), dtype=imgs.dtype)
+        for i, (img, w11, h11, cw11, ch11) in enumerate(zip(imgs, w1, h1, cw1, ch1)):
+            cut_img = img.copy()
+            if random.random() < p:
+                cut_img[ch11:ch11 + h11, cw11:cw11 + w11, :] = 0
+            cutouts[i] = cut_img
+
+        cutouts = cutouts.reshape([n, f, h, w, c])
+        return cutouts
 
     def write_summary(self, summary_writer, steps):
         """

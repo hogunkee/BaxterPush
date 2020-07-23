@@ -14,7 +14,7 @@ from .ops import linear, conv2d, clipped_error
 from .utils import get_time, save_pkl, load_pkl
 
 class Agent(BaseModel):
-  def __init__(self, config, environment, task, sess):
+  def __init__(self, config, environment, task, sess, cutout=False):
     super(Agent, self).__init__(config, task)
     self.sess = sess
     self.weight_dir = 'weights'
@@ -22,8 +22,8 @@ class Agent(BaseModel):
     self.env = environment
     # self.history = History(self.config)
     self.memory = ReplayMemory(self.config, self.model_dir, using_feature=self.env.using_feature)
-    # self.using_feature = False
     self.feature_dim = 9
+    self.cutout = cutout
 
     with tf.variable_scope('step'):
       self.step_op = tf.Variable(0, trainable=False, name='step')
@@ -241,11 +241,34 @@ class Agent(BaseModel):
       if self.step % self.target_q_update_step == self.target_q_update_step - 1:
         self.update_target_q_network()
 
+  def random_cutout(self, states, p=0.7, min_cut=5, max_cut=20):
+    n, f, h, w, c = states.shape
+    imgs = states.reshape([n*f, h, w, c])
+
+    w1 = np.random.randint(min_cut, max_cut, 2 * n)
+    h1 = np.random.randint(min_cut, max_cut, 2 * n)
+    cw1 = np.random.randint(0, w - max_cut, 2 * n)
+    ch1 = np.random.randint(0, h - max_cut, 2 * n)
+    cutouts = np.empty((n * f, h, w, c), dtype=imgs.dtype)
+    for i, (img, w11, h11, cw11, ch11) in enumerate(zip(imgs, w1, h1, cw1, ch1)):
+      cut_img = img.copy()
+      if random.random() < p:
+        cut_img[ch11:ch11 + h11, cw11:cw11 + w11, :] = 0
+      cutouts[i] = cut_img
+
+    cutouts = cutouts.reshape([n, f, h, w, c])
+    return cutouts
+
   def q_learning_mini_batch(self):
     # if self.memory.count < self.history_length:
     #   return
     # else:
     s_t, action, reward, s_t_plus_1, terminal = self.memory.sample()
+
+    ## data augmentation ##
+    if self.cutout:
+      s_t = self.random_cutout(s_t)
+      s_t_plus_1 = self.random_cutout(s_t_plus_1)
 
     t = time.time()
     if self.double_q:

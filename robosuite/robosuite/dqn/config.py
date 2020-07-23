@@ -35,10 +35,11 @@ class AgentConfig(object):
 class EnvironmentConfig(object):
   env_name = 'BaxterPush'
 
+  crop = None
   screen_width  = 64 #84 #256
   screen_height = 64 #84 #256
-  crop = None
   screen_channel = 4
+
   max_reward = 1.
   min_reward = -1.
 

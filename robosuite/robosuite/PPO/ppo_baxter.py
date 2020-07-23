@@ -63,6 +63,7 @@ save_freq = 2000 #500 #summary_freq
 
 flags.DEFINE_integer('use_feature', 0, 'using feature-base states or image-base states.')
 flags.DEFINE_integer('train', 1, 'Train a new model or test the trained model.')
+flags.DEFINE_integer('cutout', 0, 'random cutout - prob 0.5 (default)')
 flags.DEFINE_string('model_name', None, 'name of trained model')
 flags.DEFINE_string('task', 'reach', 'name of task: reach / push / pick')
 
@@ -83,6 +84,7 @@ else:
     train_model = False
 
 task = FLAGS.task
+cutout = (FLAGS.cutout==1)
 
 if FLAGS.model_name:
     model_path = os.path.join(model_path, FLAGS.model_name)
@@ -130,13 +132,6 @@ env = robosuite.make(
 )
 env = IKWrapper(env)
 env = BaxterEnv(env, task=task, render=render, using_feature=using_feature)
-# env_name = 'RocketLander-v0'
-# env = GymEnvironment(env_name=env_name, log_path="./PPO_log", skip_frames=6)
-# env_render = GymEnvironment(env_name=env_name, log_path="./PPO_log_render", render=True, record=record)
-# fps = env_render.env.metadata.get('video.frames_per_second', 30)
-
-# print(str(env))
-# brain_name = env.external_brain_names[0]
 
 tf.reset_default_graph()
 
@@ -180,30 +175,22 @@ with tf.Session(config=gpu_config) as sess:
     steps, last_reward = sess.run([ppo_model.global_step, ppo_model.last_reward])
     summary_writer = tf.summary.FileWriter(summary_path)
     obs = env.reset() #[brain_name]
-    trainer = Trainer(ppo_model, sess, is_continuous, using_feature, train_model)
-    trainer_monitor = Trainer(ppo_model, sess, is_continuous, using_feature, False)
-    render_started = False
+    trainer = Trainer(ppo_model, sess, is_continuous, using_feature, train_model, cutout=cutout)
 
     while steps <= max_steps or not train_model:
         if env.global_done:
             obs = env.reset() #[brain_name]
             trainer.reset_buffers(total=True) #({'ppo': None}, total=True)
         # Decide and take an action
-        # if train_model:
         obs = trainer.take_action(obs, env, steps, normalize_steps, stochastic=True)
         trainer.process_experiences(obs, env.global_done, time_horizon, gamma, lambd)
-        # else:
-        #     sleep(1)
         if len(trainer.training_buffer['actions']) > buffer_size and train_model:
-            # if render:
-            #     renderthread.pause()
             print("Optimizing...")
             t = time.time()
             # Perform gradient descent with experience buffer
             trainer.update_model(batch_size, num_epoch)
             print("Optimization finished in {:.1f} seconds.".format(float(time.time() - t)))
-            # if render:
-            #     renderthread.resume()
+
         if steps % summary_freq == 0 and steps != 0 and train_model:
             # Write training statistics to tensorboard.
             trainer.write_summary(summary_writer, steps)
@@ -217,11 +204,7 @@ with tf.Session(config=gpu_config) as sess:
                 mean_reward = np.mean(trainer.stats['cumulative_reward'])
                 sess.run(ppo_model.update_reward, feed_dict={ppo_model.new_reward: mean_reward})
                 last_reward = sess.run(ppo_model.last_reward)
-        # if not render_started and render:
-        #     renderthread = RenderThread(sess=sess, trainer=trainer_monitor,
-        #                                 environment=env, brain_name=brain_name, normalize=normalize_steps, fps=fps)
-        #     renderthread.start()
-        #     render_started = True
+
     # Final save Tensorflow model
     if steps != 0 and train_model:
         save_model(sess=sess, model_path=model_path, steps=steps, saver=saver)
