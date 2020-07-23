@@ -63,7 +63,7 @@ save_freq = 2000 #500 #summary_freq
 
 flags.DEFINE_integer('use_feature', 0, 'using feature-base states or image-base states.')
 flags.DEFINE_integer('train', 1, 'Train a new model or test the trained model.')
-flags.DEFINE_integer('cutout', 0, 'random cutout - prob 0.5 (default)')
+flags.DEFINE_integer('cutout', 0, 'random cutout - prob 0.7 (default)')
 flags.DEFINE_string('model_name', None, 'name of trained model')
 flags.DEFINE_string('task', 'reach', 'name of task: reach / push / pick')
 
@@ -76,7 +76,7 @@ else:
 
 if FLAGS.train==1:
     load_model = False
-    render = False
+    render = True#False
     train_model = True
 else:
     load_model = True

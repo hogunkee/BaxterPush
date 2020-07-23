@@ -65,12 +65,13 @@ class BaxterEnv():
             self.goal = arena_pos + np.array([-0.05, -0.15, 0.0]) + np.array([0.0, 0.0, 0.1])  # 0.025
 
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
-        self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
+        self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(random_quat()))
+        # self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
         self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16]) #0.06
 
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
-        self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(
-            np.array([0.0, 0.0, 0.0, 1.0])))
+        self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(random_quat()))
+        # self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
         target = self.env.model.worldbody.find("./body[@name='target']")
         target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
 
