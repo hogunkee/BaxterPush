@@ -1,0 +1,5 @@
+# pretrained agent
+--model_path /home/scarab5/hogun_codes/carla-dobro/client/outputs/model/debug_2020-05-28_09-20-23/0.pth.tar
+--save_name /home/scarab5/hogun_codes/carla-dobro/client/agent_records/
+
+--port 2000

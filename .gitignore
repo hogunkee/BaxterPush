@@ -1,8 +1,16 @@
 __pycache__
+*.pkl
 *.pyc
 data/
 .idea/
 checkpoints/
 logs/
+log/
+log2/
+video/
+trajectory/
 robosuite/robosuite/PPO/PPO_summary/
 robosuite/robosuite/PPO/models/
+robosuite/robosuite/carla_dobro/rl/models/
+robosuite/robosuite/carla_dobro/gail/models/
+robosuite/robosuite/carla_dobro/ndgail/models/

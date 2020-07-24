@@ -169,7 +169,7 @@ class BaxterEnv():
         reward = 0.0
         if self.task == 'reach':
             if stucked == -1 or 1 - np.abs(self.env.env._right_hand_quat[1]) > 0.01:
-                reward = -5.0 #0.0 #np.exp(-1.0 * np.min([np.linalg.norm(self.state[6:9]-self.obj_pos), np.linalg.norm(self.state[6:9]-self.target_pos)]))
+                reward = 0.0 #np.exp(-1.0 * np.min([np.linalg.norm(self.state[6:9]-self.obj_pos), np.linalg.norm(self.state[6:9]-self.target_pos)]))
                 done = True
                 print('episode done. [STUCKED]')
             else:

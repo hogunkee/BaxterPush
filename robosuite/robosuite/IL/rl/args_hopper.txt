@@ -1,0 +1,29 @@
+#learning process
+--env_name Hopper-v2
+--game_title HOPPER
+--max_step 4096
+--total_iters 1000
+--print_period 1
+--start_train 0
+--batch_size 128
+
+
+#network parameter
+--save_name PPO
+--hidden1_units 512
+--hidden2_units 256
+
+
+#agent parameter
+--agent_name PPO
+--discount_factor 0.99
+
+#policy parameter
+--clip_value 0.2
+--policy_epochs 20
+#--policy_lr 0.000025
+--policy_lr 0.00001
+
+#value parameter
+--value_epochs 20
+--value_lr 0.001

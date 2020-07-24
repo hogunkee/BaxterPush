@@ -1,0 +1,44 @@
+#learning process
+--env_name CARLA082
+--max_step 4096
+--total_iters 1000
+--print_period 1
+--game_title EASY
+--start_train 0
+--batch_size 128
+
+
+#network parameter
+--save_name EASY
+
+--conv1_channels 32
+--conv2_channels 64
+--conv3_channels 32
+--sfc1_units 128
+--sfc2_units 32
+
+--fc1_units 512
+--fc2_units 256
+
+
+#agent parameter
+--agent_name EASY
+--discount_factor 0.99
+
+#policy parameter
+--clip_value 0.2
+--policy_epochs 20
+--policy_lr 0.000025
+
+#value parameter
+--value_epochs 20
+--value_lr 0.001
+
+
+#discriminator parameter
+--disc_name EASY_DISC
+--disc_lr 0.0005
+#--disc_epochs 10
+--disc_epochs 20
+#--weight_gp 100.0
+--weight_gp 10.0
