@@ -67,7 +67,7 @@ class BaxterEnv():
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(random_quat()))
         # self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
-        self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16]) #0.06
+        self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16]) #0.16
 
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(random_quat()))
@@ -76,7 +76,7 @@ class BaxterEnv():
         target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
 
         if self.task == 'push' or self.task == 'pick':
-            self.state[6:9] = init_pos + np.array([self.mov_dist/2, self.mov_dist/2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0., 0., 0.06])
+            self.state[6:9] = init_pos + np.array([self.mov_dist/2, self.mov_dist/2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0., 0., 0.06]) #0.06
 
         self.env.reset_sims()
         # self.env.reset_arms(qpos=INIT_ARM_POS)
@@ -120,9 +120,9 @@ class BaxterEnv():
 
 
     def step(self, action):
-        # 1 0
-        # 8
-        # gripper open and close
+        # 8 directions
+        # up / down
+        # gripper close / open
         self.step_count += 1
         action = np.squeeze(action) #action[0][0]
         mov_dist = self.mov_dist

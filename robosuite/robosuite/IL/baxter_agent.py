@@ -13,6 +13,7 @@ import tensorflow as tf
 
 flags = tf.app.flags
 flags.DEFINE_integer('render', 1, 'render the screens')
+flags.DEFINE_integer('num_episodes', 100, 'number of episodes')
 flags.DEFINE_integer('use_feature', 0, 'using feature-base states or image-base states.')
 flags.DEFINE_string('task', 'reach', 'name of task: [ reach / push / pick ]')
 FLAGS = flags.FLAGS
@@ -24,6 +25,7 @@ else:
 
 render = bool(FLAGS.render)
 task = FLAGS.task
+num_episodes = FLAGS.num_episodes
 
 # camera resolution
 screen_width = 64
@@ -60,17 +62,18 @@ def main():
         os.makedirs(saving_path)
 
     success_log = []
-    for n in num_episodes:
+    for n in range(num_episodes):
         obs = env.reset()
         done = False
         cumulative_reward = 0.0
         step_count = 0
-        agent = ExpertAgent(task, using_feature)
+        agent = GreedyAgent(env)
 
         while not done:
             step_count += 1
-            action = agent.get_action(obs)
+            action = agent.get_action()
             obs, reward, done, _ = env.step(action)
+            print(step_count, 'steps \t action: ', action, '\t reward: ', reward)
             cumulative_reward += reward
             if reward>=100:
                 success_log.append(1)
@@ -81,16 +84,34 @@ def main():
         print(step_count, cumulative_reward)
 
 
-class ExpertAgent():
-    def __init__(self, task, using_feature):
-        self.task = task
-        self.using_feature = using_feature
+class GreedyAgent():
+    def __init__(self, env):
+        self.env = env
+        self.task = self.env.task
+        self.using_feature = self.env.using_feature
+        self.mov_dist = self.env.mov_dist
+        self.action_size = self.env.action_size
 
-        if self.task == 'reach':
-            self.action_dim
+    def get_action(self):
+        mov_dist = self.mov_dist
+        predicted_distance_list = []
+        for action in range(self.action_size):
+            if action < 8:
+                mov_degree = action * np.pi / 4.0
+                arm_pos = self.env.arm_pos + np.array([mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree), 0.0])
+            elif action == 8:
+                arm_pos = self.env.arm_pos + np.array([0.0, 0.0, mov_dist])
+            elif action == 9:
+                arm_pos = self.env.arm_pos + np.array([0.0, 0.0, -mov_dist])
 
-    def get_action(self, state):
-        return
+            if arm_pos[2] < 0.57:
+                predicted_distance_list.append(np.inf)
+            else:
+                dist = np.linalg.norm(arm_pos - self.env.obj_pos)
+                predicted_distance_list.append(dist)
+
+        action = np.argmin(predicted_distance_list)
+        return action
 
 if __name__=='__main__':
     main()
