@@ -71,7 +71,6 @@ def calc_gpu_fraction(fraction_string):
 def main(_):
   gpu_config = tf.ConfigProto()
   gpu_config.gpu_options.allow_growth = True
-
   with tf.Session(config=gpu_config) as sess:
     config = get_config(FLAGS) or FLAGS
 

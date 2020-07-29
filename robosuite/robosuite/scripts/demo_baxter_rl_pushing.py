@@ -21,7 +21,7 @@ class BaxterEnv():
         if task=='reach':
             action_size = 10 #8
         elif task=='push':
-            action_size = 12
+            action_size = 10 #12
         elif task=='pick':
             action_size = 12
         self.mov_dist = 0.04 #0.03
@@ -97,11 +97,11 @@ class BaxterEnv():
         self.target_id = self.env.obj_body_id['CustomObject_1']
         self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
         self.pre_vec = self.target_pos - self.obj_pos
-        self.pre_target_pos = self.target_pos
+        self.pre_target_pos = self.target_pos.copy()
 
         # self.state[6:9] = self.env._r_eef_xpos
         self.arm_pos = self.env._r_eef_xpos
-        self.pre_arm_pos = self.arm_pos
+        self.pre_arm_pos = self.arm_pos.copy()
         self.global_done = False
 
         if self.task == 'reach':
@@ -153,10 +153,10 @@ class BaxterEnv():
         self.obj_pos = self.env.sim.data.body_xpos[self.obj_id]
 
         # self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
-        if self.task == 'reach' or self.task == 'push':
-            self.pre_target_pos = self.target_pos
-            self.target_pos = self.env.sim.data.body_xpos[self.target_id]
-            # self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
+        # if self.task == 'reach' or self.task == 'push':
+        self.pre_target_pos = self.target_pos.copy()
+        self.target_pos = self.env.sim.data.body_xpos[self.target_id]
+        # self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
 
         vec = self.target_pos - self.obj_pos
         # vec = self.goal - self.state[6:9]
@@ -225,11 +225,6 @@ class BaxterEnv():
                 done = True
                 print('episode done. [STUCKED]')
             else:
-                if np.linalg.norm(vec) < 0.10: #0.05
-                    reward = 100
-                    done = True
-                    print('episode done. [SUCCESS]')
-
                 # print('=' * 30)
                 # print(self.obj_pos)
                 # print(self.pre_obj_pos)
@@ -239,8 +234,14 @@ class BaxterEnv():
                 x_old = np.linalg.norm(self.pre_vec)
                 d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
                 d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
+
+
+                if np.linalg.norm(vec) < 0.10: #0.05
+                    reward = 100
+                    done = True
+                    print('episode done. [SUCCESS]')
                 # get away #
-                if d1 > 0.4:
+                elif d1 > 0.4:
                     reward = -5
                     done = True
                 elif d1 > 2 * self.mov_dist:
