@@ -19,6 +19,10 @@ class SimpleCNN():
         self.screen_width = 64
         self.screen_channel = 4
 
+        self.num_epochs = 100
+        self.batch_size = 512
+        self.lr = 1e-4
+
         self.dueling = False
 
     def set_datapath(self, data_path):
@@ -37,10 +41,11 @@ class SimpleCNN():
         self.t_w = {}
 
         #initializer = tf.contrib.layers.xavier_initializer()
-        initializer = tf.truncated_normal_initializer(0, 0.1) #0.02)
+        self.initializer = tf.truncated_normal_initializer(0, 0.1) #0.02)
         activation_fn = tf.nn.relu
 
         # training network
+        self.a_true = tf.placeholder('int32', [None, 1], name='a_t')
         with tf.variable_scope('prediction'):
             if self.cnn_format == 'NHWC':
                 self.s_t = tf.placeholder('float32', [None, 2, self.screen_height, self.screen_width, self.screen_channel], name='s_t')
@@ -90,32 +95,41 @@ class SimpleCNN():
 
             self.q_action = tf.argmax(self.q, dimension=1)
 
-            q_summary = []
-            avg_q = tf.reduce_mean(self.q, 0)
-            for idx in range(self.action_size):
-                q_summary.append(tf.summary.histogram('q/%s' % idx, avg_q[idx]))
-            self.q_summary = tf.summary.merge(q_summary, 'q_summary')
+            self.cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.q, labels=self.a_true)
+            self.cost = tf.reduce_mean(cross_entropy)
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.cost)
+
+            self.correct_prediction = tf.equal(self.q_action, self.a_true)
+            self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))
+
+            # q_summary = []
+            # avg_q = tf.reduce_mean(self.q, 0)
+            # for idx in range(self.action_size):
+            #     q_summary.append(tf.summary.histogram('q/%s' % idx, avg_q[idx]))
+            # self.q_summary = tf.summary.merge(q_summary, 'q_summary')
 
     def load_pkl(self, pkl_file):
         with open(os.path.join(pkl_file), 'rb') as f:
             return pickle.load(f)
 
     def train(self, sess):
+        sess.run(tf.global_variables_initializer())
         print('Training starts..')
         bs = self.batch_size
-
         for epoch in range(self.num_epochs):
-            p_idx = 0
-            pkl_action = self.a_list[p_idx]
-            pkl_state = self.s_list[p_idx]
-            assert pkl_action[:-5] == pkl_state[:-5]
-            buff_actions = self.load_pkl(pkl_action)
-            buff_states = self.load_pkl(pkl_state)
-
-
             for p_idx in len(self.a_list):
+                pkl_action = self.a_list[p_idx]
+                pkl_state = self.s_list[p_idx]
+                assert pkl_action[:-5] == pkl_state[:-5]
+                buff_actions = self.load_pkl(pkl_action)
+                buff_states = self.load_pkl(pkl_state)
+                assert len(buff_actions) == len(buff_states)
 
-            batch_actions =
+                for i in range(len(buff_actions//bs)):
+                    batch_actions = buff_actions[bs * i:bs * (i + 1)]
+                    batch_states = buff_states[bs * i:bs * (i + 1)]
+                    _, cost, accuracy = sess.run([self.optimizer, self.cost, self.accuracy], \
+                                                   feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
 
         return
 

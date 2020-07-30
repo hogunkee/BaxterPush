@@ -14,7 +14,7 @@ import tensorflow as tf
 
 flags = tf.app.flags
 flags.DEFINE_integer('render', 1, 'render the screens')
-flags.DEFINE_integer('num_episodes', 100, 'number of episodes')
+flags.DEFINE_integer('num_episodes', 10000, 'number of episodes')
 flags.DEFINE_integer('use_feature', 0, 'using feature-base states or image-base states.')
 flags.DEFINE_string('task', 'reach', 'name of task: [ reach / push / pick ]')
 
