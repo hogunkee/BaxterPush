@@ -1,8 +1,13 @@
-import os
+import datetime
 import numpy as np
+import os
 import pickle
-from ops import *
 
+from functools import reduce
+from ops import *
+from tensorboardX import SummaryWriter
+
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 class SimpleCNN():
     def __init__(self, task, cnn_format='NHWC'):
@@ -15,15 +20,19 @@ class SimpleCNN():
             self.action_size = 12
 
         self.cnn_format = cnn_format
-        self.screen_heidht = 64
+        self.screen_height = 64
         self.screen_width = 64
         self.screen_channel = 4
 
+        self.data_path = None
         self.num_epochs = 100
         self.batch_size = 512
         self.lr = 1e-4
 
         self.dueling = False
+
+        self.build_net()
+
 
     def set_datapath(self, data_path):
         file_list = os.listdir(data_path)
@@ -32,20 +41,21 @@ class SimpleCNN():
             print('No pickle files exist. Wrong data path!!')
             return
         self.pkl_list = sorted([os.path.join(data_path, p) for p in pkl_list])
-        self.a_list = [p for p in pkl_list if self.task+'_a_' in p]
-        self.s_list = [p for p in pkl_list if self.task + '_s_' in p]
+        self.a_list = sorted([p for p in pkl_list if self.task+'_a_' in p])
+        self.s_list = sorted([p for p in pkl_list if self.task + '_s_' in p])
         assert len(self.a_list) == len(self.s_list)
+        self.data_path = data_path
 
     def build_net(self):
         self.w = {}
         self.t_w = {}
 
         #initializer = tf.contrib.layers.xavier_initializer()
-        self.initializer = tf.truncated_normal_initializer(0, 0.1) #0.02)
+        initializer = tf.truncated_normal_initializer(0, 0.1) #0.02)
         activation_fn = tf.nn.relu
 
         # training network
-        self.a_true = tf.placeholder('int32', [None, 1], name='a_t')
+        self.a_true = tf.placeholder('int64', [None], name='a_t')
         with tf.variable_scope('prediction'):
             if self.cnn_format == 'NHWC':
                 self.s_t = tf.placeholder('float32', [None, 2, self.screen_height, self.screen_width, self.screen_channel], name='s_t')
@@ -95,32 +105,38 @@ class SimpleCNN():
 
             self.q_action = tf.argmax(self.q, dimension=1)
 
-            self.cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.q, labels=self.a_true)
+            cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.q, labels=tf.one_hot(self.a_true, depth=self.action_size))
             self.cost = tf.reduce_mean(cross_entropy)
             self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.cost)
 
             self.correct_prediction = tf.equal(self.q_action, self.a_true)
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))
 
-            # q_summary = []
-            # avg_q = tf.reduce_mean(self.q, 0)
-            # for idx in range(self.action_size):
-            #     q_summary.append(tf.summary.histogram('q/%s' % idx, avg_q[idx]))
-            # self.q_summary = tf.summary.merge(q_summary, 'q_summary')
 
     def load_pkl(self, pkl_file):
-        with open(os.path.join(pkl_file), 'rb') as f:
+        with open(os.path.join(self.data_path, pkl_file), 'rb') as f:
             return pickle.load(f)
 
     def train(self, sess):
+        now = datetime.datetime.now()
+        writer = SummaryWriter(os.path.join(FILE_PATH, 'bc_train_log/', 'tensorboard', self.task + '_' + now.strftime("%m%d_%H%M%S")))
         sess.run(tf.global_variables_initializer())
+
+
         print('Training starts..')
         bs = self.batch_size
         for epoch in range(self.num_epochs):
-            for p_idx in len(self.a_list):
+            if epoch==40:
+                self.lr /= 10.0
+            elif epoch==70:
+                self.lr /= 10.0
+
+            epoch_cost = []
+            epoch_accur = []
+            for p_idx in range(len(self.a_list)):
                 pkl_action = self.a_list[p_idx]
                 pkl_state = self.s_list[p_idx]
-                assert pkl_action[:-5] == pkl_state[:-5]
+                assert pkl_action[-5:] == pkl_state[-5:]
                 buff_actions = self.load_pkl(pkl_action)
                 buff_states = self.load_pkl(pkl_state)
                 assert len(buff_actions) == len(buff_states)
@@ -130,7 +146,14 @@ class SimpleCNN():
                     batch_states = buff_states[bs * i:bs * (i + 1)]
                     _, cost, accuracy = sess.run([self.optimizer, self.cost, self.accuracy], \
                                                    feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
+                    epoch_cost.append(cost)
+                    epoch_accur.append(accuracy)
 
+            writer.add_scalar('train-%s/mean_cost'%self.task, np.mean(epoch_cost))
+            writer.add_scalar('train-%s/mean_accuracy'%self.task, np.mean(epoch_accur))
+            print('[Epoch %d] cost: %.3f\taccur: %.3f' %(epoch, np.mean(epoch_cost), np.mean(epoch_accur)))
+
+        print('Training done!')
         return
 
 def main():
