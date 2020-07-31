@@ -25,7 +25,7 @@ class SimpleCNN():
         self.screen_channel = 4
 
         self.data_path = None
-        self.num_epochs = 10 #0
+        self.num_epochs = 70
         self.batch_size = 128
         self.lr = 1e-4
 
@@ -38,7 +38,8 @@ class SimpleCNN():
         self.checkpoint_dir = os.path.join(FILE_PATH, 'bc_train_log/', 'checkpoint/', self.model_name)
 
         self.build_net()
-        self.saver = tf.train.Saver()  # max_to_keep=10)
+        self.saver = tf.train.Saver(max_to_keep=10)
+        self.max_accur = 0.0
 
 
     def set_datapath(self, data_path):
@@ -141,6 +142,8 @@ class SimpleCNN():
         writer = SummaryWriter(os.path.join(FILE_PATH, 'bc_train_log/', 'tensorboard', self.task + '_' + self.now.strftime("%m%d_%H%M%S")))
         sess.run(tf.global_variables_initializer())
 
+        if not os.path.exists(self.checkpoint_dir):
+            os.makedirs(self.checkpoint_dir)
         print('Training starts..')
         bs = self.batch_size
         for epoch in range(self.num_epochs):
@@ -171,27 +174,22 @@ class SimpleCNN():
             writer.add_scalar('train-%s/mean_accuracy'%self.task, np.mean(epoch_accur))
             print('[Epoch %d] cost: %.3f\taccur: %.3f' %(epoch, np.mean(epoch_cost), np.mean(epoch_accur)))
 
-        if not os.path.exists(self.checkpoint_dir):
-            os.makedirs(self.checkpoint_dir)
-        self.saver.save(sess, os.path.join(self.checkpoint_dir, 'model')) #, global_step=step)
+            if np.mean(epoch_accur) > 0.95 and np.mean(epoch_accur) > self.max_accur:
+                self.saver.save(sess, os.path.join(self.checkpoint_dir, 'model'), global_step=epoch)
+                self.max_accur = np.mean(epoch_accur)
+
         print('Training done!')
         return
 
 def main():
-    todo = 'test'
-
     data_path = 'data'
-    # model = SimpleCNN(task='reach')
-    model = SimpleCNN(task='reach', model_name='reach_0731_162446')
+    model = SimpleCNN(task='reach')
     model.set_datapath(data_path)
 
     gpu_config = tf.ConfigProto()
     gpu_config.gpu_options.allow_growth = True
     with tf.Session(config=gpu_config) as sess:
-        if todo=='train':
-            model.train(sess)
-        elif todo=='test':
-            model.load_model(sess)
+        model.train(sess)
 
 
 if __name__=='__main__':
