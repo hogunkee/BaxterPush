@@ -3,7 +3,9 @@ import sys
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(FILE_PATH, '../..'))
 sys.path.append(os.path.join(FILE_PATH, '..', 'scripts'))
+from behavior_cloning import SimpleCNN
 from demo_baxter_rl_pushing import *
+
 
 import shutil
 import time
@@ -13,13 +15,17 @@ import pickle
 import tensorflow as tf
 
 flags = tf.app.flags
-flags.DEFINE_integer('render', 1, 'render the screens')
+flags.DEFINE_integer('render', 0, 'render the screens')
 flags.DEFINE_integer('num_episodes', 10000, 'number of episodes')
 flags.DEFINE_integer('use_feature', 0, 'using feature-base states or image-base states.')
 flags.DEFINE_string('task', 'reach', 'name of task: [ reach / push / pick ]')
 
 flags.DEFINE_integer('save_data', 1, 'save data or not')
 flags.DEFINE_integer('max_buff', 10000, 'number of steps saved in one data file.')
+
+flags.DEFINE_string('model_type', 'greedy', 'greedy / bc')
+flags.DEFINE_string('model_name', 'reach_0731_162446', 'name of the trained BC model')
+
 FLAGS = flags.FLAGS
 using_feature = (FLAGS.use_feature==1)
 if using_feature:
@@ -28,10 +34,15 @@ else:
     print('This agent will use image-based states..!!')
 
 render = bool(FLAGS.render)
-task = FLAGS.task
-num_episodes = FLAGS.num_episodes
 save_data = bool(FLAGS.save_data)
-max_buff = FLAGS.max_buff
+print_on = False
+
+if FLAGS.model_type=='bc':
+    render = True
+    save_data = False
+    print_on = True
+    assert FLAGS.model_name is not None
+
 
 # camera resolution
 screen_width = 64
@@ -62,7 +73,14 @@ def main():
         crop=crop
     )
     env = IKWrapper(env)
-    env = BaxterEnv(env, task=task, render=render, using_feature=using_feature)
+    env = BaxterEnv(env, task=FLAGS.task, render=render, using_feature=using_feature)
+
+    if FLAGS.model_type=='greedy':
+        agent = GreedyAgent(env)
+    elif FLAGS.model_type=='bc':
+        trained_model = SimpleCNN(FLAGS.task, model_name=FLAGS.model_name)
+        agent = BCAgent(trained_model)
+
 
     if not os.path.exists(save_name):
         os.makedirs(save_name)
@@ -70,17 +88,20 @@ def main():
     success_log = []
     buff_states = []
     buff_actions = []
-    for n in range(num_episodes):
+    for n in range(FLAGS.num_episodes):
+        if print_on:
+            print('[Episode %d'%n)
         obs = env.reset()
         done = False
         cumulative_reward = 0.0
         step_count = 0
-        agent = GreedyAgent(env)
 
         while not done:
             step_count += 1
-            action = agent.get_action()
+            action = agent.get_action(obs)
             obs, reward, done, _ = env.step(action)
+            if print_on:
+                print('action: %d / reward: %.2f'%(action, reward))
             # print(step_count, 'steps \t action: ', action, '\t reward: ', reward)
             cumulative_reward += reward
             if reward>=100:
@@ -94,7 +115,7 @@ def main():
                     os.makedirs(save_name)
                 buff_states.append(obs)
                 buff_actions.append(action)
-                if len(buff_states) >= max_buff:
+                if len(buff_states) >= FLAGS.max_buff:
                     f_list = os.listdir(save_name)
                     num_pickles = len([f for f in f_list if task in f])
                     save_num = num_pickles // 2
@@ -105,6 +126,8 @@ def main():
                     print(save_num, '-th file saved.')
                     buff_states, buff_actions = [], []
 
+        if print_on:
+            print('success rate?:', np.mean(success_log), success_log)
         print('Episode %d ends.'%(n+1))
         print(step_count, cumulative_reward)
 
@@ -117,7 +140,7 @@ class GreedyAgent():
         self.mov_dist = self.env.mov_dist
         self.action_size = self.env.action_size
 
-    def get_action(self):
+    def get_action(self, obs):
         mov_dist = self.mov_dist
         if self.task == 'reach':
             predicted_distance_list = []
@@ -181,9 +204,23 @@ class GreedyAgent():
 
         return action
 
-
     def get_cos(self, vec1, vec2):
         return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+
+
+class BCAgent():
+    def __init__(self, BC_model):
+        gpu_config = tf.ConfigProto()
+        gpu_config.gpu_options.allow_growth = True
+        self.sess = tf.Session(config=gpu_config)
+        self.model = BC_model
+        self.model.load_model(self.sess)
+
+    def get_action(self, obs):
+        action = self.sess.run(self.model.q_action, feed_dict={self.model.s_t: [obs]})
+        return action
+
+
 
 if __name__=='__main__':
     main()

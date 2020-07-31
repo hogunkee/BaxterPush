@@ -10,7 +10,7 @@ from tensorboardX import SummaryWriter
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 class SimpleCNN():
-    def __init__(self, task, cnn_format='NHWC'):
+    def __init__(self, task, cnn_format='NHWC', model_name=None):
         self.task = task
         if task=='reach':
             self.action_size = 10
@@ -31,7 +31,10 @@ class SimpleCNN():
 
         self.dueling = False
         self.now = datetime.datetime.now()
-        self.model_name = self.task + '_' + self.now.strftime("%m%d_%H%M%S")
+        if model_name is None:
+            self.model_name = self.task + '_' + self.now.strftime("%m%d_%H%M%S")
+        else:
+            self.model_name = model_name
         self.checkpoint_dir = os.path.join(FILE_PATH, 'bc_train_log/', 'checkpoint/', self.model_name)
 
         self.build_net()
@@ -121,6 +124,19 @@ class SimpleCNN():
         with open(os.path.join(self.data_path, pkl_file), 'rb') as f:
             return pickle.load(f)
 
+    def load_model(self, sess):
+        print(" [*] Loading checkpoints...")
+        ckpt = tf.train.get_checkpoint_state(self.checkpoint_dir)
+        if ckpt and ckpt.model_checkpoint_path:
+            ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
+            fname = os.path.join(self.checkpoint_dir, ckpt_name)
+            self.saver.restore(sess, fname)
+            print(" [*] Load SUCCESS: %s" % fname)
+            return True
+        else:
+            print(" [!] Load FAILED: %s" % self.checkpoint_dir)
+            return False
+
     def train(self, sess):
         writer = SummaryWriter(os.path.join(FILE_PATH, 'bc_train_log/', 'tensorboard', self.task + '_' + self.now.strftime("%m%d_%H%M%S")))
         sess.run(tf.global_variables_initializer())
@@ -157,19 +173,26 @@ class SimpleCNN():
 
         if not os.path.exists(self.checkpoint_dir):
             os.makedirs(self.checkpoint_dir)
-        self.saver.save(sess, os.path.join(self.checkpoint_dir, 'model') #, global_step=step)
+        self.saver.save(sess, os.path.join(self.checkpoint_dir, 'model')) #, global_step=step)
         print('Training done!')
         return
 
 def main():
+    todo = 'test'
+
     data_path = 'data'
-    model = SimpleCNN(task='reach')
+    # model = SimpleCNN(task='reach')
+    model = SimpleCNN(task='reach', model_name='reach_0731_162446')
     model.set_datapath(data_path)
 
     gpu_config = tf.ConfigProto()
     gpu_config.gpu_options.allow_growth = True
     with tf.Session(config=gpu_config) as sess:
-        model.train(sess)
+        if todo=='train':
+            model.train(sess)
+        elif todo=='test':
+            model.load_model(sess)
+
 
 if __name__=='__main__':
     main()
