@@ -25,13 +25,17 @@ class SimpleCNN():
         self.screen_channel = 4
 
         self.data_path = None
-        self.num_epochs = 100
-        self.batch_size = 512
+        self.num_epochs = 10 #0
+        self.batch_size = 128
         self.lr = 1e-4
 
         self.dueling = False
+        self.now = datetime.datetime.now()
+        self.model_name = self.task + '_' + self.now.strftime("%m%d_%H%M%S")
+        self.checkpoint_dir = os.path.join(FILE_PATH, 'bc_train_log/', 'checkpoint/', self.model_name)
 
         self.build_net()
+        self.saver = tf.train.Saver()  # max_to_keep=10)
 
 
     def set_datapath(self, data_path):
@@ -41,7 +45,7 @@ class SimpleCNN():
             print('No pickle files exist. Wrong data path!!')
             return
         self.pkl_list = sorted([os.path.join(data_path, p) for p in pkl_list])
-        self.a_list = sorted([p for p in pkl_list if self.task+'_a_' in p])
+        self.a_list = sorted([p for p in pkl_list if self.task + '_a_' in p])
         self.s_list = sorted([p for p in pkl_list if self.task + '_s_' in p])
         assert len(self.a_list) == len(self.s_list)
         self.data_path = data_path
@@ -118,10 +122,8 @@ class SimpleCNN():
             return pickle.load(f)
 
     def train(self, sess):
-        now = datetime.datetime.now()
-        writer = SummaryWriter(os.path.join(FILE_PATH, 'bc_train_log/', 'tensorboard', self.task + '_' + now.strftime("%m%d_%H%M%S")))
+        writer = SummaryWriter(os.path.join(FILE_PATH, 'bc_train_log/', 'tensorboard', self.task + '_' + self.now.strftime("%m%d_%H%M%S")))
         sess.run(tf.global_variables_initializer())
-
 
         print('Training starts..')
         bs = self.batch_size
@@ -141,7 +143,7 @@ class SimpleCNN():
                 buff_states = self.load_pkl(pkl_state)
                 assert len(buff_actions) == len(buff_states)
 
-                for i in range(len(buff_actions//bs)):
+                for i in range(len(buff_actions)//bs):
                     batch_actions = buff_actions[bs * i:bs * (i + 1)]
                     batch_states = buff_states[bs * i:bs * (i + 1)]
                     _, cost, accuracy = sess.run([self.optimizer, self.cost, self.accuracy], \
@@ -153,6 +155,9 @@ class SimpleCNN():
             writer.add_scalar('train-%s/mean_accuracy'%self.task, np.mean(epoch_accur))
             print('[Epoch %d] cost: %.3f\taccur: %.3f' %(epoch, np.mean(epoch_cost), np.mean(epoch_accur)))
 
+        if not os.path.exists(self.checkpoint_dir):
+            os.makedirs(self.checkpoint_dir)
+        self.saver.save(sess, os.path.join(self.checkpoint_dir, 'model') #, global_step=step)
         print('Training done!')
         return
 
