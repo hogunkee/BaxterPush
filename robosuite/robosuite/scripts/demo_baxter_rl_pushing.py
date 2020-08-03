@@ -5,7 +5,9 @@ import robosuite
 from robosuite.wrappers import IKWrapper
 import matplotlib.pyplot as plt
 from robosuite.utils.mjcf_utils import array_to_string, string_to_array
+from robosuite.utils.transform_utils import quat2euler
 from new_motion_planner import move_to_6Dpos, get_camera_pos, force_gripper, move_to_pos, get_target_pos, get_arm_rotation, object_pass, stop_force_gripper
+
 
 
 INIT_ARM_POS = [0.40933302, -1.24377906, 0.68787495, 2.03907987, -0.27229507, 0.8635629,
@@ -15,18 +17,30 @@ INIT_ARM_POS = [0.40933302, -1.24377906, 0.68787495, 2.03907987, -0.27229507, 0.
 from gym import spaces
 
 class BaxterEnv():
-    def __init__(self, env, task='push', render=True, using_feature=False, random_spawn=True):
+    def __init__(self, env, task='push', continuous=False, render=True, using_feature=False, random_spawn=True):
         self.env = env
         self.task = task # 'reach', 'push' or 'pick'
-        if task=='reach':
-            action_size = 10 #8
-        elif task=='push':
-            action_size = 10 #12
-        elif task=='pick':
-            action_size = 12
-        self.mov_dist = 0.04 #0.03
-        self.action_space = spaces.Discrete(action_size)
-        self.action_size = action_size
+        self.is_continuous = continuous
+        if self.is_continuous:
+            if task=='reach':
+                action_dim = 3
+            elif task=='push':
+                action_dim = 6
+            elif task=='pick':
+                action_dim = 6
+            self.action_space = spaces.Box(-1, 1, [action_dim])  # action: [x, y, z, cos_th, sin_th, gripper]
+            self.action_dim = action_dim
+        else:
+            if task=='reach':
+                action_size = 10 #8
+            elif task=='push':
+                action_size = 10 #12
+            elif task=='pick':
+                action_size = 12
+            self.action_space = spaces.Discrete(action_size)
+            self.action_size = action_size
+
+        self.mov_dist = 0.04  # 0.03
         self.state = None
         self.grasp = None
         self.init_obj_pos = None
@@ -120,27 +134,39 @@ class BaxterEnv():
 
 
     def step(self, action):
-        # 8 directions
-        # up / down
-        # gripper close / open
         self.step_count += 1
-        action = np.squeeze(action) #action[0][0]
-        mov_dist = self.mov_dist
+        if self.is_continuous:
+            # [dx, dy, dz] + [cos(theta), sin(theta), grasp]
+            action = np.squeeze(action)
+            position_change = action[:3] / 20.0
+            self.arm_pos = self.arm_pos + position_change
 
-        self.pre_arm_pos = self.arm_pos.copy()
-        if action < 8:
-            mov_degree = action * np.pi / 4.0
-            self.arm_pos = self.arm_pos + np.array([mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree), 0.0])
-        elif action == 8:
-            self.arm_pos = self.arm_pos + np.array([0.0, 0.0, mov_dist])
-            # self.state[6:9] = self.state[6:9] + np.array([0.0, 0.0, mov_dist])
-        elif action == 9:
-            self.arm_pos = self.arm_pos + np.array([0.0, 0.0, -mov_dist])
-            # self.state[6:9] = self.state[6:9] + np.array([0.0, 0.0, -mov_dist])
-        elif action == 10:
-            self.grasp = 1.00
-        elif action == 11:
-            self.grasp = 0.0
+            if self.task == 'push' or self.task == 'pick':
+                cos_theta = action[3]
+                sin_theta = action[4]
+                grasp = (action[5] + 1.)/2.
+                theta = np.arctan2(sin_theta, cos_theta)
+                self.state[11] = theta
+                self.grasp = grasp
+        else:
+            # 8 directions
+            # up / down
+            # gripper close / open
+            action = np.squeeze(action) #action[0][0]
+            mov_dist = self.mov_dist
+
+            self.pre_arm_pos = self.arm_pos.copy()
+            if action < 8:
+                mov_degree = action * np.pi / 4.0
+                self.arm_pos = self.arm_pos + np.array([mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree), 0.0])
+            elif action == 8:
+                self.arm_pos = self.arm_pos + np.array([0.0, 0.0, mov_dist])
+            elif action == 9:
+                self.arm_pos = self.arm_pos + np.array([0.0, 0.0, -mov_dist])
+            elif action == 10:
+                self.grasp = 1.00
+            elif action == 11:
+                self.grasp = 0.0
 
         #obj_id = self.env.obj_body_id['CustomObject_0']
         #obj_pos = self.env.sim.data.body_xpos[obj_id]
@@ -152,23 +178,16 @@ class BaxterEnv():
         self.arm_pos = self.state[6:9]
         self.obj_pos = self.env.sim.data.body_xpos[self.obj_id]
 
-        # self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
-        # if self.task == 'reach' or self.task == 'push':
         self.pre_target_pos = self.target_pos.copy()
         self.target_pos = self.env.sim.data.body_xpos[self.target_id]
-        # self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
-
         vec = self.target_pos - self.obj_pos
-        # vec = self.goal - self.state[6:9]
-        # print('action:', action)
-        # print('pre arm pos:', self.pre_arm_pos)
-        # print('arm pos:', self.arm_pos)
-        # print('')
 
         done = False
         reward = 0.0
         if self.task == 'reach':
-            if stucked == -1 or 1 - np.abs(self.env.env._right_hand_quat[1]) > 0.01:
+            arm_euler = quat2euler(self.env.env._right_hand_quat)
+            # if stucked == -1 or #1 - np.abs(self.env.env._right_hand_quat[1]) > 0.01:
+            if stucked == -1 or check_stucked(arm_euler):
                 reward = 0.0 #np.exp(-1.0 * np.min([np.linalg.norm(self.state[6:9]-self.obj_pos), np.linalg.norm(self.state[6:9]-self.target_pos)]))
                 done = True
                 print('episode done. [STUCKED]')
@@ -188,48 +207,17 @@ class BaxterEnv():
                     reward = -0.2
                 else:
                     reward = -0.1
-                '''
-                d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
-                # d2 = np.linalg.norm(self.arm_pos[:2] - self.target_pos[:2])
-                # d2_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_target_pos[:2])
-                if d1 < self.mov_dist:
-                    if d1_old > self.mov_dist:
-                        reward = 5
-                    if d1 < self.mov_dist/2: # or d2 < 0.025:
-                        reward = 100
-                        done = True
-                        print('episode done. [SUCCESS]')
-                elif d1 > self.mov_dist and d1_old < self.mov_dist:
-                    reward = -5
-                elif d1_old - d1 > self.mov_dist/2: # or d2_old - d2 > 0.02:
-                    reward = 1.0
-                elif d1 - d1_old > self.mov_dist/2: # or d2 - d2_old> 0.02:
-                    reward = -1.0
-                else:
-                    reward = -0.1
-                # if d1 > 0.025 and d2 > 0.025:
-                #     step_penalty = 0.1
-                #     reward = 10 * np.max([np.exp(-d1) - np.exp(-d1_old), np.exp(-d2) - np.exp(-d2_old)]) - step_penalty  # range: 0~5 - 0.1
-                # else:
-                #     reward = 100
-                #     done = True
-                '''
 
         elif self.task == 'push':
-            C1 = 1
-            C2 = 100
-            if stucked==-1 or 1-np.abs(self.env.env._right_hand_quat[1]) > 0.01:
-                # reward = np.exp(-1.0 * np.min([np.linalg.norm(self.state[6:9]-self.obj_pos), np.linalg.norm(self.state[6:9]-self.target_pos)]))
-                # reward = - C1 * np.min([np.linalg.norm(self.target_pos - self.state[6:9]), np.linalg.norm(self.obj_pos - self.state[6:9])])
+            # C1 = 1
+            # C2 = 100
+            arm_euler = quat2euler(self.env.env._right_hand_quat)
+            # if stucked == -1 or #1 - np.abs(self.env.env._right_hand_quat[1]) > 0.01:
+            if stucked == -1 or check_stucked(arm_euler):
                 reward = -10
                 done = True
                 print('episode done. [STUCKED]')
             else:
-                # print('=' * 30)
-                # print(self.obj_pos)
-                # print(self.pre_obj_pos)
-                # print(self.obj_pos - self.pre_obj_pos)
-                # print('='*30)
                 x = np.linalg.norm(vec)
                 x_old = np.linalg.norm(self.pre_vec)
                 d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
@@ -256,10 +244,6 @@ class BaxterEnv():
                 else:
                     reward = 0.0
 
-                # distance_reward = np.exp( 50*(- np.linalg.norm(vec) + np.linalg.norm(self.pre_vec)) ) - 1
-                # touching_reward = np.linalg.norm(self.obj_pos - self.pre_obj_pos) + np.linalg.norm(self.target_pos - self.pre_target_pos)
-                # step_penalty = 0.0 #0.1
-                # reward = C1 * distance_reward + C2 * touching_reward - step_penalty
                 self.pre_vec = vec
 
         elif self.task == 'pick':
@@ -325,6 +309,11 @@ class BaxterEnv():
                    (self.env.camera_height - crop) // 2:(self.env.camera_height + crop) // 2, :]
 
         return [im_1, im_2]
+
+def check_stucked(arm_euler):
+    check1 = arm_euler[0] % np.pi < 0.01 or np.pi - arm_euler[0] % np.pi < 0.01
+    check2 = arm_euler[1] % np.pi < 0.01 or np.pi - arm_euler[1] % np.pi < 0.01
+    return not (check1 and check2)
 
 
 def random_quat():

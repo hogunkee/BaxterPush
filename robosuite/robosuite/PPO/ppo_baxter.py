@@ -36,7 +36,7 @@ hidden_units = 128
 # lambd=<n>                Lambda parameter for GAE [default: 0.95].
 lambd = 0.95
 # learning-rate=<rate>     Model learning rate [default: 3e-4].
-learning_rate = 3e-4 #4e-5
+learning_rate = 1e-3 #3e-4 #4e-5
 # max-steps=<n>            Maximum number of steps to run environment [default: 1e6].
 max_steps = 3e5 #15e6
 # normalize                Activate state normalization for this many steps and freeze statistics afterwards.
@@ -63,12 +63,13 @@ save_freq = 2000 #500 #summary_freq
 
 flags.DEFINE_integer('use_feature', 0, 'using feature-base states or image-base states.')
 flags.DEFINE_integer('train', 1, 'Train a new model or test the trained model.')
-flags.DEFINE_integer('cutout', 0, 'random cutout - prob 0.7 (default)')
+flags.DEFINE_integer('cutout', 1, 'random cutout - prob 0.7 (default)')
+flags.DEFINE_integer('continuous', 1, 'continuous / discrete action space')
 flags.DEFINE_string('model_name', None, 'name of trained model')
 flags.DEFINE_string('task', 'reach', 'name of task: reach / push / pick')
 
 FLAGS = flags.FLAGS
-using_feature = (FLAGS.use_feature==1)
+using_feature = bool(FLAGS.use_feature)
 if using_feature:
     print('This model will use feature-based states..!!')
 else:
@@ -76,7 +77,7 @@ else:
 
 if FLAGS.train==1:
     load_model = False
-    render = True#False
+    render = False
     train_model = True
 else:
     load_model = True
@@ -84,7 +85,8 @@ else:
     train_model = False
 
 task = FLAGS.task
-cutout = (FLAGS.cutout==1)
+cutout = bool(FLAGS.cutout)
+continuous = bool(FLAGS.continuous)
 
 if FLAGS.model_name:
     model_path = os.path.join(model_path, FLAGS.model_name)
@@ -92,7 +94,8 @@ if FLAGS.model_name:
     assert task in FLAGS.model_name
 else:
     now = datetime.datetime.now()
-    base = 'fb' if using_feature else 'ib'
+    # base = 'fb' if using_feature else 'ib'
+    base = 'con' if continuous else 'dis'
     model_path = os.path.join(model_path, task + '_' + base + '_' + now.strftime("%m%d_%H%M%S"))
     summary_path = os.path.join(summary_path, task + '_' + base + '_' + now.strftime("%m%d_%H%M%S"))
 
@@ -131,21 +134,104 @@ env = robosuite.make(
     crop=crop
 )
 env = IKWrapper(env)
-env = BaxterEnv(env, task=task, render=render, using_feature=using_feature)
+env = BaxterEnv(env, task=task, continuous=continuous, render=render, using_feature=using_feature)
 
 tf.reset_default_graph()
 
-ppo_model = create_agent_model(env, lr=learning_rate,
+ppo_model = create_agent_model(env, is_continuous=continuous, lr=learning_rate,
                                h_size=hidden_units, epsilon=epsilon,
                                beta=beta, max_step=max_steps,
                                normalize=normalize_steps, num_layers=num_layers,
                                use_states=using_feature)
 
-is_continuous = False #env.brains[brain_name].action_space_type == "continuous"
 # use_observations = True
 # use_states = False
 
 if not load_model:
+
+
+def random_quat():
+    rand = np.random.rand(3)
+    r1 = np.sqrt(1.0 - rand[0])
+    r2 = np.sqrt(rand[0])
+    pi2 = np.pi * 2.0
+    t1 = pi2 * rand[1]
+    t2 = pi2 * rand[2]
+    return np.array((np.sin(t1) * r1, np.cos(t1) * r1, np.sin(t2) * r2, np.cos(t2) * r2), dtype=np.float32)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--seed', type=int, default=0)
+    parser.add_argument(
+        '--num-objects', type=int, default=2)
+    parser.add_argument(
+        '--num-episodes', type=int, default=10000)
+    parser.add_argument(
+        '--num-steps', type=int, default=1)
+    parser.add_argument(
+        '--render', type=bool, default=True)
+    parser.add_argument(
+        '--bin-type', type=str, default="table") # table, bin, two
+    parser.add_argument(
+        '--object-type', type=str, default="cube") # T, Tlarge, L, 3DNet, stick, round_T_large
+    parser.add_argument(
+        '--test', type=bool, default=False)
+    parser.add_argument(
+        '--config-file', type=str, default="config_example.yaml")
+    args = parser.parse_args()
+
+    np.random.seed(args.seed)
+
+    env = robosuite.make(
+        "BaxterPush",
+        bin_type=args.bin_type,
+        object_type=args.object_type,
+        ignore_done=True,
+        has_renderer=True,
+        camera_name="eye_on_right_wrist",
+        gripper_visualization=False,
+        use_camera_obs=False,
+        use_object_obs=False,
+        camera_depth=True,
+        num_objects=args.num_objects,
+        control_freq=100
+    )
+    env = IKWrapper(env)
+
+    render = args.render
+
+    cam_offset = np.array([0.05, 0, 0.15855])
+    #cam_offset = np.array([0.05755483, 0.0, 0.16810357])
+    right_arm_camera_id = env.sim.model.camera_name2id("eye_on_right_wrist")
+    left_arm_camera_id = env.sim.model.camera_name2id("eye_on_left_wrist")
+
+    arena_pos = env.env.mujoco_arena.bin_abs
+    init_pos = arena_pos + np.array([0.0, 0.0, 0.3])
+    init_obj_pos = arena_pos + np.array([0.0, 0.0, 0.0])
+    float_pos = arena_pos + np.array([0.0, 0.0, 0.3])
+
+    num_episodes = args.num_episodes
+    num_steps = args.num_steps
+    test = args.test
+    save_num = args.seed
+
+    rl_env = BaxterEnv(env, task='pick', render=render)
+
+    success_count, failure_count, controller_failure = 0, 0, 0
+    for i in  range(num_episodes):
+        state = rl_env.reset()
+        done = False
+        while not done:
+            state, reward, done, _ = rl_env.step(action)
+    '''
+    for i in range(0, num_episodes):
+
+        rl_env.reset()
+        for j in range(12):
+            state, reward, done, _ = rl_env.step(j)
+    '''
+
     shutil.rmtree(summary_path, ignore_errors=True)
 
 if not os.path.exists(model_path):
@@ -175,7 +261,7 @@ with tf.Session(config=gpu_config) as sess:
     steps, last_reward = sess.run([ppo_model.global_step, ppo_model.last_reward])
     summary_writer = tf.summary.FileWriter(summary_path)
     obs = env.reset() #[brain_name]
-    trainer = Trainer(ppo_model, sess, is_continuous, using_feature, train_model, cutout=cutout)
+    trainer = Trainer(ppo_model, sess, continuous, using_feature, train_model, cutout=cutout)
 
     while steps <= max_steps or not train_model:
         if env.global_done:

@@ -55,7 +55,7 @@ class Trainer(object):
         run_list = [self.model.output, self.model.output_max, self.model.probs, self.model.value, self.model.entropy,
                     self.model.learning_rate]
         if self.is_continuous:
-            epsi = np.random.randn(1, 12)
+            epsi = np.random.randn(1, env.action_dim)
             # epsi = np.random.randn(len(info.states), env.brains[brain_name].action_space_size)
             feed_dict[self.model.epsilon] = epsi
         if self.use_observations:

@@ -4,7 +4,7 @@ import tensorflow.contrib.layers as c_layers
 from tensorflow.python.tools import freeze_graph
 
 
-def create_agent_model(env, lr=1e-4, h_size=128, epsilon=0.2, beta=1e-3, max_step=5e6, normalize=0, num_layers=2, use_states=False):
+def create_agent_model(env, is_continuous=False, lr=1e-4, h_size=128, epsilon=0.2, beta=1e-3, max_step=5e6, normalize=0, num_layers=2, use_states=False):
     """
     Takes a Unity environment and model-specific hyper-parameters and returns the
     appropriate PPO agent model for the environment.
@@ -16,7 +16,10 @@ def create_agent_model(env, lr=1e-4, h_size=128, epsilon=0.2, beta=1e-3, max_ste
     :return: a sub-class of PPOAgent tailored to the environment.
     :param max_step: Total number of training steps.
     """
-    return DiscreteControlModel(lr, env, h_size, epsilon, beta, max_step, normalize, num_layers, use_states)
+    if is_continuous:
+        return ContinuousControlModel(lr, env, h_size, epsilon, max_step, normalize, num_layers, use_states)
+    else:
+        return DiscreteControlModel(lr, env, h_size, epsilon, beta, max_step, normalize, num_layers, use_states)
     # if num_layers < 1:
     #     num_layers = 1
     #
@@ -89,20 +92,32 @@ class PPOModel(object):
             c_channels = 4
         else:
             c_channels = 3
-        if num_streams<=1:
-            self.observation_in = tf.placeholder(shape=[None, o_size_h, o_size_w, c_channels], dtype=tf.float32,
-                                                 name='observation_0')
-        else:
-            self.observation_in = tf.placeholder(shape=[None, num_streams, o_size_h, o_size_w, c_channels], dtype=tf.float32,
-                                                 name='observation_0')
+
+        self.observation_in = tf.placeholder(shape=[None, 2, o_size_h, o_size_w, c_channels], dtype=tf.float32,
+                                             name='observation_0')
 
         streams = []
         for i in range(num_streams):
-            self.conv1 = tf.layers.conv2d(self.observation_in[:, i], 16, kernel_size=[8, 8], strides=[4, 4],
+            self.conv01 = tf.layers.conv2d(self.observation_in[:, 0], 16, kernel_size=[6, 6], strides=[2, 2],
                                           use_bias=False, activation=activation)
-            self.conv2 = tf.layers.conv2d(self.conv1, 32, kernel_size=[4, 4], strides=[2, 2],
+            self.conv02 = tf.layers.conv2d(self.conv01, 32, kernel_size=[5, 5], strides=[2, 2],
                                           use_bias=False, activation=activation)
-            hidden = c_layers.flatten(self.conv2)
+            self.conv03 = tf.layers.conv2d(self.conv02, 64, kernel_size=[4, 4], strides=[2, 2],
+                                           use_bias=False, activation=activation)
+            hidden0 = c_layers.flatten(self.conv03)
+            self.conv11 = tf.layers.conv2d(self.observation_in[:, 1], 16, kernel_size=[6, 6], strides=[2, 2],
+                                           use_bias=False, activation=activation)
+            self.conv12 = tf.layers.conv2d(self.conv11, 32, kernel_size=[5, 5], strides=[2, 2],
+                                           use_bias=False, activation=activation)
+            self.conv13 = tf.layers.conv2d(self.conv12, 64, kernel_size=[4, 4], strides=[2, 2],
+                                           use_bias=False, activation=activation)
+            # self.conv11 = tf.layers.conv2d(self.observation_in[:, 1], 16, kernel_size=[8, 8], strides=[4, 4],
+            #                               use_bias=False, activation=activation)
+            # self.conv12 = tf.layers.conv2d(self.conv11, 32, kernel_size=[4, 4], strides=[2, 2],
+            #                               use_bias=False, activation=activation)
+            hidden1 = c_layers.flatten(self.conv13)
+            hidden = tf.concat([hidden0, hidden1], axis=1)
+
             for j in range(num_layers):
                 hidden = tf.layers.dense(hidden, h_size, use_bias=False, activation=activation)
             streams.append(hidden)
@@ -208,42 +223,53 @@ class PPOModel(object):
 
 
 class ContinuousControlModel(PPOModel):
-    def __init__(self, lr, brain, h_size, epsilon, max_step, normalize, num_layers):
+    def __init__(self, lr, env, h_size, epsilon, max_step, normalize, num_layers, use_states=False):
         """
         Creates Continuous Control Actor-Critic model.
         :param brain: State-space size
         :param h_size: Hidden layer size
         """
         super(ContinuousControlModel, self).__init__()
-        s_size = brain.state_space_size
-        a_size = brain.action_space_size
 
         self.normalize = normalize
         self._create_global_steps()
         self._create_reward_encoder()
 
-        hidden_state, hidden_visual, hidden_policy, hidden_value = None, None, None, None
-        if brain.number_observations > 0:
-            height_size, width_size = brain.camera_resolutions[0]['height'], brain.camera_resolutions[0]['width']
-            bw = brain.camera_resolutions[0]['blackAndWhite']
-            hidden_visual = self._create_visual_encoder(height_size, width_size, bw, h_size, 2, tf.nn.tanh, num_layers)
-        if brain.state_space_size > 0:
-            s_size = brain.state_space_size
-            if brain.state_space_type == "continuous":
-                hidden_state = self._create_continuous_state_encoder(s_size, h_size, 2, tf.nn.tanh, num_layers)
+        a_size = env.action_dim
+        if use_states:
+            s_size = 9
+            hidden_policy, hidden_value = self._create_continuous_state_encoder(s_size, h_size, 2, tf.nn.tanh, num_layers)
+        else:
+            if env.env.env.crop is not None:
+                height_size = width_size = env.env.env.crop
             else:
-                hidden_state = self._create_discrete_state_encoder(s_size, h_size, 2, tf.nn.tanh, num_layers)
-
-        if hidden_visual is None and hidden_state is None:
-            raise Exception("No valid network configuration possible. "
-                            "There are no states or observations in this brain")
-        elif hidden_visual is not None and hidden_state is None:
+                height_size, width_size = env.env.env.camera_height, env.env.env.camera_width
+            rgbd = True  # means color image
+            hidden_visual = self._create_visual_encoder(height_size, width_size, rgbd, h_size, 2, tf.nn.tanh, num_layers)
             hidden_policy, hidden_value = hidden_visual
-        elif hidden_visual is None and hidden_state is not None:
-            hidden_policy, hidden_value = hidden_state
-        elif hidden_visual is not None and hidden_state is not None:
-            hidden_policy = tf.concat([hidden_visual[0], hidden_state[0]], axis=1)
-            hidden_value = tf.concat([hidden_visual[1], hidden_state[1]], axis=1)
+
+        # hidden_state, hidden_visual, hidden_policy, hidden_value = None, None, None, None
+        # if brain.number_observations > 0:
+        #     height_size, width_size = brain.camera_resolutions[0]['height'], brain.camera_resolutions[0]['width']
+        #     bw = brain.camera_resolutions[0]['blackAndWhite']
+        #     hidden_visual = self._create_visual_encoder(height_size, width_size, bw, h_size, 2, tf.nn.tanh, num_layers)
+        # if brain.state_space_size > 0:
+        #     s_size = brain.state_space_size
+        #     if brain.state_space_type == "continuous":
+        #         hidden_state = self._create_continuous_state_encoder(s_size, h_size, 2, tf.nn.tanh, num_layers)
+        #     else:
+        #         hidden_state = self._create_discrete_state_encoder(s_size, h_size, 2, tf.nn.tanh, num_layers)
+        #
+        # if hidden_visual is None and hidden_state is None:
+        #     raise Exception("No valid network configuration possible. "
+        #                     "There are no states or observations in this brain")
+        # elif hidden_visual is not None and hidden_state is None:
+        #     hidden_policy, hidden_value = hidden_visual
+        # elif hidden_visual is None and hidden_state is not None:
+        #     hidden_policy, hidden_value = hidden_state
+        # elif hidden_visual is not None and hidden_state is not None:
+        #     hidden_policy = tf.concat([hidden_visual[0], hidden_state[0]], axis=1)
+        #     hidden_value = tf.concat([hidden_visual[1], hidden_state[1]], axis=1)
 
         self.batch_size = tf.placeholder(shape=None, dtype=tf.int32, name='batch_size')
 
@@ -296,7 +322,7 @@ class DiscreteControlModel(PPOModel):
             else:
                 height_size, width_size = env.env.env.camera_height, env.env.env.camera_width
             rgbd = True # means color image
-            hidden_visual = self._create_visual_encoder(height_size, width_size, rgbd, h_size, 2, tf.nn.elu, num_layers)
+            hidden_visual = self._create_visual_encoder(height_size, width_size, rgbd, h_size, 1, tf.nn.elu, num_layers)
 
         hidden = hidden_state if use_states else tf.concat(hidden_visual, axis=1)
         # if brain.state_space_size > 0:
