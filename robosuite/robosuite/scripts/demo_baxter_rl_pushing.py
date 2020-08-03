@@ -310,11 +310,11 @@ class BaxterEnv():
 
         return [im_1, im_2]
 
+
 def check_stucked(arm_euler):
     check1 = arm_euler[0] % np.pi < 0.01 or np.pi - arm_euler[0] % np.pi < 0.01
     check2 = arm_euler[1] % np.pi < 0.01 or np.pi - arm_euler[1] % np.pi < 0.01
     return not (check1 and check2)
-
 
 def random_quat():
     rand = np.random.rand(3)
