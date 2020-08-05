@@ -14,7 +14,7 @@ from .ops import linear, conv2d, clipped_error
 from .utils import get_time, save_pkl, load_pkl
 
 class Agent(BaseModel):
-  def __init__(self, config, environment, task, sess, cutout=False):
+  def __init__(self, config, environment, task, sess, cutout=False, rgbd=False):
     super(Agent, self).__init__(config, task)
     self.sess = sess
     self.weight_dir = 'weights'
@@ -24,6 +24,8 @@ class Agent(BaseModel):
     self.memory = ReplayMemory(self.config, self.model_dir, using_feature=self.env.using_feature)
     self.feature_dim = 9
     self.cutout = cutout
+    if not rgbd:
+      self.screen_channel = 3
 
     with tf.variable_scope('step'):
       self.step_op = tf.Variable(0, trainable=False, name='step')
@@ -304,7 +306,7 @@ class Agent(BaseModel):
     self.t_w = {}
 
     #initializer = tf.contrib.layers.xavier_initializer()
-    initializer = tf.truncated_normal_initializer(0, 0.1) #0.02)
+    initializer = tf.truncated_normal_initializer(0, 0.02)
     activation_fn = tf.nn.relu
 
     # training network

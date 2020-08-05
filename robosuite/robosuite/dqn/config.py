@@ -38,7 +38,7 @@ class EnvironmentConfig(object):
   crop = None
   screen_width  = 64 #84 #256
   screen_height = 64 #84 #256
-  screen_channel = 4
+  screen_channel = 3
 
   max_reward = 1.
   min_reward = -1.

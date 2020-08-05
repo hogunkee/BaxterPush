@@ -17,10 +17,14 @@ INIT_ARM_POS = [0.40933302, -1.24377906, 0.68787495, 2.03907987, -0.27229507, 0.
 from gym import spaces
 
 class BaxterEnv():
-    def __init__(self, env, task='push', continuous=False, render=True, using_feature=False, random_spawn=True):
+    def __init__(self, env, task='push', continuous=False, render=True, using_feature=False, random_spawn=True, rgbd=False):
         self.env = env
         self.task = task # 'reach', 'push' or 'pick'
         self.is_continuous = continuous
+        self.rgbd = rgbd
+
+        self.action_type = '2D' # or '3D'
+
         if self.is_continuous:
             if task=='reach':
                 action_dim = 3
@@ -32,9 +36,15 @@ class BaxterEnv():
             self.action_dim = action_dim
         else:
             if task=='reach':
-                action_size = 10 #8
+                if self.action_type=='2D':
+                    action_size = 8
+                elif self.actin_type=='3D':
+                    action_size = 10 #8
             elif task=='push':
-                action_size = 10 #12
+                if self.action_type=='2D':
+                    action_size = 8
+                elif self.actin_type=='3D':
+                    action_size = 10 #12
             elif task=='pick':
                 action_size = 12
             self.action_space = spaces.Discrete(action_size)
@@ -62,26 +72,29 @@ class BaxterEnv():
         arena_pos = self.env.env.mujoco_arena.bin_abs
         self.state = np.array([0.4, 0.6, 1.0, 0.0, 0.0, 0.0, 0.4, -0.6, 1.0, 0.0, 0.0, 0.0])
         self.grasp = 0.0
+        if self.task=='reach' or self.task=='push':
+            self.grasp = 1.0
 
         self.env.reset()
         if self.random_spawn:
-            init_pos = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])
-            self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])  # 0.025
+            init_pos = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05]) #0.1
+            self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05])  # 0.1
             spawn_count = 0
             while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < 0.25:  # <0.08
                 spawn_count += 1
                 self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * \
-                            np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.1])  # 0.025
+                            np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05])  # 0.025
                 if spawn_count%10 == 0:
-                    init_pos = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0,size=3) + np.array([0.0, 0.0, 0.1])
+                    init_pos = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0,size=3) + np.array([0.0, 0.0, 0.05])
         else:
-            init_pos = arena_pos + np.array([0.15, 0.10, 0.0]) + np.array([0.0, 0.0, 0.1])
-            self.goal = arena_pos + np.array([-0.05, -0.15, 0.0]) + np.array([0.0, 0.0, 0.1])  # 0.025
+            init_pos = arena_pos + np.array([0.15, 0.10, 0.0]) + np.array([0.0, 0.0, 0.05])
+            self.goal = arena_pos + np.array([-0.05, -0.15, 0.0]) + np.array([0.0, 0.0, 0.05])  # 0.025
 
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(random_quat()))
         # self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
-        self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16]) #0.16
+        self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085])
+        # self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16])  # 0.16
 
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(random_quat()))
@@ -89,8 +102,8 @@ class BaxterEnv():
         target = self.env.model.worldbody.find("./body[@name='target']")
         target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
 
-        if self.task == 'push' or self.task == 'pick':
-            self.state[6:9] = init_pos + np.array([self.mov_dist/2, self.mov_dist/2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0., 0., 0.06]) #0.06
+        # if self.task == 'push' or self.task == 'pick':
+        #     self.state[6:9] = init_pos + np.array([self.mov_dist/2, self.mov_dist/2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0., 0., 0.06]) #0.06
 
         self.env.reset_sims()
         # self.env.reset_arms(qpos=INIT_ARM_POS)
@@ -164,7 +177,7 @@ class BaxterEnv():
             elif action == 9:
                 self.arm_pos = self.arm_pos + np.array([0.0, 0.0, -mov_dist])
             elif action == 10:
-                self.grasp = 1.00
+                self.grasp = 1.0
             elif action == 11:
                 self.grasp = 0.0
 
@@ -281,8 +294,11 @@ class BaxterEnv():
 
         im_depth = near / (1 - ddd * (1 - near / far))
         im_rgb = rgb / 255.0
-        im_1 = np.concatenate((im_rgb, im_depth[..., np.newaxis]), axis=2)
-        im_1 = np.flip(im_1, axis=0)
+        if self.rgbd:
+            im_1 = np.concatenate((im_rgb, im_depth[..., np.newaxis]), axis=2)
+            im_1 = np.flip(im_1, axis=0)
+        else:
+            im_1 = np.flip(im_rgb, axis=0)
 
         camera_obs = self.env.sim.render(
             camera_name="rlview2",
@@ -298,8 +314,12 @@ class BaxterEnv():
 
         im_depth = near / (1 - ddd * (1 - near / far))
         im_rgb = rgb / 255.0
-        im_2 = np.concatenate((im_rgb, im_depth[..., np.newaxis]), axis=2)
-        im_2 = np.flip(im_2, axis=0)
+        if self.rgbd:
+            im_2 = np.concatenate((im_rgb, im_depth[..., np.newaxis]), axis=2)
+            im_2 = np.flip(im_2, axis=0)
+        else:
+            im_2 = np.flip(im_rgb, axis=0)
+
 
         crop = self.env.crop
         if crop is not None:

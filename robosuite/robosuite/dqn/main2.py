@@ -38,8 +38,9 @@ flags.DEFINE_integer('seed', 0, 'random seed')
 flags.DEFINE_integer('num_objects', 2, 'number of objects')
 flags.DEFINE_integer('num_episodes', 10000, 'number of episodes')
 flags.DEFINE_integer('num_steps', 1, 'number of steps')
-flags.DEFINE_integer('render', 0, 'Whether to do rendering or not') #True
-flags.DEFINE_integer('using_feature', 0, 'Whether to using feature states or images')
+flags.DEFINE_integer('render', 0, 'Whether to do rendering or not')
+flags.DEFINE_integer('using_feature', 0, 'Whether to use feature states or images')
+flags.DEFINE_integer('using_rgbd', 0, 'Whether to use rgb-d images or rgb images')
 flags.DEFINE_string('bin_type', 'table', 'bin type')
 flags.DEFINE_string('object_type', 'cube', 'object type')
 flags.DEFINE_integer('test', 0, 'Test or not')
@@ -48,10 +49,11 @@ flags.DEFINE_string('model_name', None, 'name of trained model') #'0707_140753',
 
 FLAGS = flags.FLAGS
 
-render = (FLAGS.render==1)
-using_feature = (FLAGS.using_feature==1)
-test = (FLAGS.test==1)
-cutout = (FLAGS.cutout==1)
+render = bool(FLAGS.render)
+using_feature = bool(FLAGS.using_feature)
+test = bool(FLAGS.test)
+cutout = bool(FLAGS.cutout)
+using_rgbd = bool(FLAGS.using_rgbd)
 
 # Set random seed
 tf.set_random_seed(FLAGS.random_seed)
@@ -92,7 +94,7 @@ def main(_):
         crop=config.crop
     )
     env = IKWrapper(env)
-    env = BaxterEnv(env, task=FLAGS.task, render=render, using_feature=using_feature)
+    env = BaxterEnv(env, task=FLAGS.task, render=render, using_feature=using_feature, rgbd=using_rgbd)
 
     if not tf.test.is_gpu_available() and FLAGS.use_gpu:
       raise Exception("use_gpu flag is true when no GPUs are available")
@@ -100,7 +102,7 @@ def main(_):
     if not FLAGS.use_gpu:
       config.cnn_format = 'NHWC'
 
-    agent = Agent(config, env, FLAGS.task, sess, cutout=cutout)
+    agent = Agent(config, env, FLAGS.task, sess, cutout=cutout, rgbd=using_rgbd)
 
     if FLAGS.is_train and not test:
       agent.train()
