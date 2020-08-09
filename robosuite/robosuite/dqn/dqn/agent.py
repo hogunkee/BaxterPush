@@ -603,10 +603,10 @@ class ResNetAgent(Agent):
     with tf.variable_scope('prediction'):
       self.s_t = tf.placeholder('float32', [None, 2, self.screen_height, self.screen_width, self.screen_channel], name='s_t')
 
-      self.x_0 = self.s_t[:, 0, :, :]
-      self.x_1 = self.s_t[:, 1, :, :]
-      h_0 = self.conv_bn_relu(self.x_0, 16, 'first', stride=1)
-      h_1 = self.conv_bn_relu(self.x_1, 16, 'first', stride=1)
+      x_0 = self.s_t[:, 0, :, :]
+      x_1 = self.s_t[:, 1, :, :]
+      h_0 = self.conv_bn_relu(x_0, 16, 'first', stride=1)
+      h_1 = self.conv_bn_relu(x_1, 16, 'first', stride=1)
 
       for i in range(n):
         h_0 = self.res_block(h_0, 16, 'l0-1-' + str(i), i)
@@ -639,10 +639,10 @@ class ResNetAgent(Agent):
       self.target_s_t = tf.placeholder('float32', [None, 2, self.screen_height, self.screen_width, self.screen_channel],
                                 name='target_s_t')
 
-      self.x_0 = self.s_t[:, 0, :, :]
-      self.x_1 = self.s_t[:, 1, :, :]
-      h_0 = self.conv_bn_relu(self.x_0, 16, 'first', stride=1)
-      h_1 = self.conv_bn_relu(self.x_1, 16, 'first', stride=1)
+      x_0 = self.target_s_t[:, 0, :, :]
+      x_1 = self.target_s_t[:, 1, :, :]
+      h_0 = self.conv_bn_relu(x_0, 16, 'first', stride=1)
+      h_1 = self.conv_bn_relu(x_1, 16, 'first', stride=1)
 
       for i in range(n):
         h_0 = self.res_block(h_0, 16, 'l0-1-' + str(i), i)
