@@ -586,3 +586,222 @@ class Agent(BaseModel):
     # if not self.display:
     #   self.env.env.monitor.close()
     #   #gym.upload(gym_dir, writeup='https://github.com/devsisters/DQN-tensorflow', api_key='')
+
+class ResNetAgent(Agent):
+  def __init__(self, config, environment, task, sess, cutout=False, rgbd=False):
+    self.n = 3
+    self.beta = 1e-5
+    self.is_training = True #is_training
+    super(ResNetAgent, self).__init__(config, environment, task, sess, cutout, rgbd)
+
+  def build_dqn(self):
+    n = self.n
+    initializer = tf.truncated_normal_initializer(0, 0.02)
+    activation_fn = tf.nn.relu
+
+    # training network
+    with tf.variable_scope('prediction'):
+      self.s_t = tf.placeholder('float32', [None, 2, self.screen_height, self.screen_width, self.screen_channel], name='s_t')
+
+      self.x_0 = self.s_t[:, 0, :, :]
+      self.x_1 = self.s_t[:, 1, :, :]
+      h_0 = self.conv_bn_relu(self.x_0, 16, 'first', stride=1)
+      h_1 = self.conv_bn_relu(self.x_1, 16, 'first', stride=1)
+
+      for i in range(n):
+        h_0 = self.res_block(h_0, 16, 'l0-1-' + str(i), i)
+        h_1 = self.res_block(h_1, 16, 'l1-1-' + str(i), i)
+
+      for i in range(n):
+        h_0 = self.res_block(h_0, 32, 'l0-2-' + str(i), i)
+        h_1 = self.res_block(h_1, 32, 'l1-2-' + str(i), i)
+
+      h = tf.concat([h_0, h_1], axis=-1)
+      for i in range(n):
+        h = self.res_block(h, 64, 'l-3-' + str(i), i)
+
+      h = tf.reshape(h, [-1, self.screen_height * self.screen_width // 64, 64]) #[-1, 8 * 8, 64])
+      h = tf.reduce_mean(h, 1)
+      # h = tf.reduce_max(h, 1)
+      h = self.fc(h, 512, 'fc-1')
+      self.q = self.fc(h, self.env.action_size, 'q')
+
+    self.q_action = tf.argmax(self.q, dimension=1)
+
+    q_summary = []
+    avg_q = tf.reduce_mean(self.q, 0)
+    for idx in range(self.env.action_size):
+      q_summary.append(tf.summary.histogram('q/%s' % idx, avg_q[idx]))
+    self.q_summary = tf.summary.merge(q_summary, 'q_summary')
+
+    # target network
+    with tf.variable_scope('target'):
+      self.target_s_t = tf.placeholder('float32', [None, 2, self.screen_height, self.screen_width, self.screen_channel],
+                                name='target_s_t')
+
+      self.x_0 = self.s_t[:, 0, :, :]
+      self.x_1 = self.s_t[:, 1, :, :]
+      h_0 = self.conv_bn_relu(self.x_0, 16, 'first', stride=1)
+      h_1 = self.conv_bn_relu(self.x_1, 16, 'first', stride=1)
+
+      for i in range(n):
+        h_0 = self.res_block(h_0, 16, 'l0-1-' + str(i), i)
+        h_1 = self.res_block(h_1, 16, 'l1-1-' + str(i), i)
+
+      for i in range(n):
+        h_0 = self.res_block(h_0, 32, 'l0-2-' + str(i), i)
+        h_1 = self.res_block(h_1, 32, 'l1-2-' + str(i), i)
+
+      h = tf.concat([h_0, h_1], axis=-1)
+      for i in range(n):
+        h = self.res_block(h, 64, 'l-3-' + str(i), i)
+
+      h = tf.reshape(h, [-1, self.screen_height * self.screen_width // 64, 64])  # [-1, 8 * 8, 64])
+      h = tf.reduce_mean(h, 1)
+      # h = tf.reduce_max(h, 1)
+      h = self.fc(h, 512, 'fc-1')
+      self.target_q = self.fc(h, self.env.action_size, 'q')
+
+    self.target_q_idx = tf.placeholder('int32', [None, None], 'outputs_idx')
+    self.target_q_with_idx = tf.gather_nd(self.target_q, self.target_q_idx)
+
+    pred_variables = [w for w in tf.all_variables() if 'prediction' in w.name]
+    target_variables = [tw for tw in tf.all_variables() if 'target' in tw.name]
+    self.w, self.t_w = {}, {}
+    for w in pred_variables:
+      w_name = '/'.join(w.name.replace('prediction', '').split('/')[1:]).split(':')[0]
+      self.w[w_name] = w
+    for tw in target_variables:
+      tw_name = '/'.join(tw.name.replace('target', '').split('/')[1:]).split(':')[0]
+      self.t_w[tw_name] = tw
+
+    with tf.variable_scope('pred_to_target'):
+      self.t_w_input = {}
+      self.t_w_assign_op = {}
+
+      for name in self.w.keys():
+        self.t_w_input[name] = tf.placeholder('float32', self.t_w[name].get_shape().as_list(), name=name)
+        self.t_w_assign_op[name] = self.t_w[name].assign(self.t_w_input[name])
+
+    # optimizer
+    with tf.variable_scope('optimizer'):
+      self.target_q_t = tf.placeholder('float32', [None], name='target_q_t')
+      self.action = tf.placeholder('int64', [None], name='action')
+
+      action_one_hot = tf.one_hot(self.action, self.env.action_size, 1.0, 0.0, name='action_one_hot')
+      q_acted = tf.reduce_sum(self.q * action_one_hot, reduction_indices=1, name='q_acted')
+
+      self.delta = self.target_q_t - q_acted
+
+      self.global_step = tf.Variable(0, trainable=False)
+
+      self.loss = tf.reduce_mean(clipped_error(self.delta), name='loss')
+      self.learning_rate_step = tf.placeholder('int64', None, name='learning_rate_step')
+      self.learning_rate_op = tf.maximum(self.learning_rate_minimum,
+                                         tf.train.exponential_decay(
+                                           self.learning_rate,
+                                           self.learning_rate_step,
+                                           self.learning_rate_decay_step,
+                                           self.learning_rate_decay,
+                                           staircase=True))
+      self.optim = tf.train.RMSPropOptimizer(
+        self.learning_rate_op, momentum=0.95, epsilon=0.01).minimize(self.loss)
+
+    with tf.variable_scope('summary'):
+      scalar_summary_tags = ['average.reward', 'average.loss', 'average.q', \
+          'episode.max reward', 'episode.min reward', 'episode.avg reward', 'episode.num of game', 'training.learning_rate']
+
+      self.summary_placeholders = {}
+      self.summary_ops = {}
+
+      for tag in scalar_summary_tags:
+        self.summary_placeholders[tag] = tf.placeholder('float32', None, name=tag.replace(' ', '_'))
+        self.summary_ops[tag]  = tf.summary.scalar("%s-%s/%s" % (self.task, self.env_type, tag), self.summary_placeholders[tag])
+
+      histogram_summary_tags = ['episode.rewards', 'episode.actions']
+
+      for tag in histogram_summary_tags:
+        self.summary_placeholders[tag] = tf.placeholder('float32', None, name=tag.replace(' ', '_'))
+        self.summary_ops[tag]  = tf.summary.histogram(tag, self.summary_placeholders[tag])
+
+      self.writer = tf.summary.FileWriter('./logs/%s' % self.model_dir, self.sess.graph)
+
+    tf.initialize_all_variables().run()
+
+    self._saver = tf.train.Saver(max_to_keep=10)
+
+    self.load_model()
+    self.update_target_q_network()
+
+  ### convolution, maxpooling and fully-connected function ###
+  def conv(self, x, num_out, stride, scope):
+    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
+      c_init = tf.contrib.layers.xavier_initializer()
+      b_init = tf.constant_initializer(0.0)
+      regularizer = tf.contrib.layers.l2_regularizer(scale=self.beta)
+      return tf.contrib.layers.conv2d(x, num_out, [3, 3], stride, activation_fn=None,
+                                      weights_initializer=c_init, weights_regularizer=regularizer,
+                                      biases_initializer=b_init)
+
+  def fc(self, x, num_out, scope):
+    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
+      # f_init = tf.truncated_normal_initializer(stddev=5e-2)
+      f_init = tf.contrib.layers.xavier_initializer()
+      b_init = tf.constant_initializer(0.0)
+      regularizer = tf.contrib.layers.l2_regularizer(scale=self.beta)
+      return tf.contrib.layers.fully_connected(x, num_out, activation_fn=None,
+                                               weights_initializer=f_init, weights_regularizer=regularizer,
+                                               biases_initializer=b_init)
+
+  def batch_norm(self, x, num_out, scope):
+    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
+      beta = tf.Variable(tf.constant(0.0, shape=[num_out]),
+                         name='beta', trainable=self.is_training)
+      gamma = tf.Variable(tf.constant(1.0, shape=[num_out]),
+                          name='gamma', trainable=self.is_training)
+      batch_mean, batch_var = tf.nn.moments(x, [0, 1, 2], name='moments')
+      ema = tf.train.ExponentialMovingAverage(decay=0.5)
+
+      def mean_var_with_update():
+        ema_apply_op = ema.apply([batch_mean, batch_var])
+        with tf.control_dependencies([ema_apply_op]):
+          return batch_mean, batch_var
+
+      if self.is_training:
+        mean, var = mean_var_with_update()
+      else:
+        mean, var = batch_mean, batch_var
+
+      normed = tf.nn.batch_normalization(x, mean, var, beta, gamma, 1e-5)
+    return normed
+
+  def conv_bn_relu(self, x, num_out, scope, stride=1):
+    x_conv = self.conv(x, num_out, stride, scope)
+    x_bn = self.batch_norm(x_conv, num_out, scope)
+    x_relu = tf.nn.relu(x_bn)
+    return x_relu
+
+  def shortcut(self, x, num_out, scope):
+    with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
+      c_init = tf.contrib.layers.xavier_initializer()
+      b_init = tf.constant_initializer(0.0)
+      regularizer = tf.contrib.layers.l2_regularizer(scale=self.beta)
+      return tf.contrib.layers.conv2d(x, num_out, [1, 1], 2, activation_fn=None,
+                                      weights_initializer=c_init, weights_regularizer=regularizer,
+                                      biases_initializer=b_init)
+
+  def res_block(self, x, num_out, scope, idx):
+    with tf.variable_scope(scope):
+      shortcut = x
+      # if int(x.shape[3]) != num_out:
+      if idx==0:
+        shortcut = self.shortcut(x, num_out, scope + '-sc')
+
+      if idx==0:
+        x_1 = self.conv_bn_relu(x, num_out, scope + '-1', stride=2)
+      else:
+        x_1 = self.conv_bn_relu(x, num_out, scope + '-1', stride=1)
+
+      x_2 = self.conv_bn_relu(x_1, num_out, scope + '-2', stride=1)
+
+      return tf.add(x_2, shortcut)

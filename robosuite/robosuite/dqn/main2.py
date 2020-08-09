@@ -2,7 +2,7 @@ from __future__ import print_function
 import random
 import tensorflow as tf
 
-from dqn.agent import Agent
+from dqn.agent import Agent, ResNetAgent
 from dqn.environment import GymEnvironment, SimpleGymEnvironment
 from config import get_config
 
@@ -28,6 +28,7 @@ flags.DEFINE_string('task', 'reach', 'name of task: reach / push / pick')
 
 # Etc
 flags.DEFINE_boolean('use_gpu', True, 'Whether to use gpu or not') # True
+flags.DEFINE_integer('resnet', 1, 'use ResNet or basic CNN')
 # flags.DEFINE_string('gpu_fraction', '1/1', 'idx / # of gpu fraction e.g. 1/3, 2/3, 3/3')
 flags.DEFINE_boolean('display', False, 'Whether to do display the game screen or not')
 flags.DEFINE_boolean('is_train', True, 'Whether to do training or testing')
@@ -54,6 +55,7 @@ using_feature = bool(FLAGS.using_feature)
 test = bool(FLAGS.test)
 cutout = bool(FLAGS.cutout)
 using_rgbd = bool(FLAGS.using_rgbd)
+using_resnet = bool(FLAGS.resnet)
 
 # Set random seed
 tf.set_random_seed(FLAGS.random_seed)
@@ -102,7 +104,10 @@ def main(_):
     if not FLAGS.use_gpu:
       config.cnn_format = 'NHWC'
 
-    agent = Agent(config, env, FLAGS.task, sess, cutout=cutout, rgbd=using_rgbd)
+    if using_resnet:
+      agent = ResNetAgent(config, env, FLAGS.task, sess, cutout=cutout, rgbd=using_rgbd)
+    else:
+      agent = Agent(config, env, FLAGS.task, sess, cutout=cutout, rgbd=using_rgbd)
 
     if FLAGS.is_train and not test:
       agent.train()

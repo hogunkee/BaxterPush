@@ -227,7 +227,7 @@ class BaxterEnv():
             arm_euler = quat2euler(self.env.env._right_hand_quat)
             # if stucked == -1 or #1 - np.abs(self.env.env._right_hand_quat[1]) > 0.01:
             if stucked == -1 or check_stucked(arm_euler):
-                reward = -10
+                reward = 0.0 #-10
                 done = True
                 print('episode done. [STUCKED]')
             else:
