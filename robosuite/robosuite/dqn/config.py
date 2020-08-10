@@ -36,8 +36,8 @@ class EnvironmentConfig(object):
   env_name = 'BaxterPush'
 
   crop = None
-  screen_width  = 64 #84 #256
-  screen_height = 64 #84 #256
+  screen_width  = 128 #64 #84 #256
+  screen_height = 128 #64 #84 #256
   screen_channel = 3
 
   max_reward = 1.

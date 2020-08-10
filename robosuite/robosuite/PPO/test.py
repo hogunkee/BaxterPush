@@ -6,7 +6,7 @@ sys.path.append(os.path.join(FILE_PATH, '..', 'scripts'))
 from demo_baxter_rl_pushing import *
 
 
-task = 'push' #'push'
+task = 'reach' #'push'
 render = True
 using_feature = False #True
 

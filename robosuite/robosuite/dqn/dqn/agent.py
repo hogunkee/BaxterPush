@@ -502,11 +502,13 @@ class Agent(BaseModel):
 
       self.writer = tf.summary.FileWriter('./logs/%s' % self.model_dir, self.sess.graph)
 
-    tf.initialize_all_variables().run()
-
     self._saver = tf.train.Saver(list(self.w.values()) + [self.step_op], max_to_keep=30)
 
-    self.load_model()
+    if self.load_model():
+      pass
+    else:
+      tf.initialize_all_variables().run()
+
     self.update_target_q_network()
 
   def update_target_q_network(self):
@@ -726,11 +728,13 @@ class ResNetAgent(Agent):
 
       self.writer = tf.summary.FileWriter('./logs/%s' % self.model_dir, self.sess.graph)
 
-    tf.initialize_all_variables().run()
-
     self._saver = tf.train.Saver(max_to_keep=10)
 
-    self.load_model()
+    if self.load_model():
+      pass
+    else:
+      tf.initialize_all_variables().run()
+
     self.update_target_q_network()
 
   ### convolution, maxpooling and fully-connected function ###

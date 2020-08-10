@@ -17,11 +17,12 @@ INIT_ARM_POS = [0.40933302, -1.24377906, 0.68787495, 2.03907987, -0.27229507, 0.
 from gym import spaces
 
 class BaxterEnv():
-    def __init__(self, env, task='push', continuous=False, render=True, using_feature=False, random_spawn=True, rgbd=False):
+    def __init__(self, env, task='push', continuous=False, render=True, using_feature=False, random_spawn=True, rgbd=False, print_on=False):
         self.env = env
         self.task = task # 'reach', 'push' or 'pick'
         self.is_continuous = continuous
         self.rgbd = rgbd
+        self.print_on = print_on
 
         self.action_type = '2D' # or '3D'
 
@@ -185,7 +186,14 @@ class BaxterEnv():
         #obj_pos = self.env.sim.data.body_xpos[obj_id]
         # self.pre_arm_pos = self.env._r_eef_xpos.copy()
         self.pre_obj_pos = self.obj_pos.copy()
-        stucked = move_to_6Dpos(self.env, None, None, self.arm_pos, self.state[9:12], arm='right', left_grasp=0.0,
+
+        ## check the arm pos is in the working area ##
+        if self.arm_pos[0] < 0.15 or self.arm_pos[0] > 0.75:
+            stucked = -1
+        elif self.arm_pos[1] < -0.62 or self.arm_pos[1] > 0.06:
+            stucked = -1
+        else:
+            stucked = move_to_6Dpos(self.env, None, None, self.arm_pos, self.state[9:12], arm='right', left_grasp=0.0,
                                 right_grasp=self.grasp, level=1.0, render=self.render)
         self.state[6:9] = self.env._r_eef_xpos
         self.arm_pos = self.state[6:9]
@@ -213,11 +221,13 @@ class BaxterEnv():
                     reward = 100
                     done = True
                     print('episode done. [SUCCESS]')
-                elif d1 < self.min_reach_dist - 0.001:
-                    self.min_reach_dist = d1
-                    reward = 1.0
-                elif self.arm_pos[2] > self.env.env.mujoco_arena.bin_abs[2] + 0.18:
-                    reward = -0.2
+
+                ## sparse reward ##
+                # elif d1 < self.min_reach_dist - 0.001:
+                #     self.min_reach_dist = d1
+                #     reward = 1.0
+                # elif self.arm_pos[2] > self.env.env.mujoco_arena.bin_abs[2] + 0.18:
+                #     reward = -0.2
                 else:
                     reward = -0.1
 
@@ -275,7 +285,8 @@ class BaxterEnv():
             im_1, im_2 = self.get_camera_obs()
             state = [im_1, im_2]
 
-        # print('reward:', reward)
+        if self.print_on:
+            print('action:', action, '\t/  reward:', reward)
         return state, reward, done, {}
 
     def get_camera_obs(self):

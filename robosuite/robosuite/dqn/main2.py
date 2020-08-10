@@ -96,7 +96,7 @@ def main(_):
         crop=config.crop
     )
     env = IKWrapper(env)
-    env = BaxterEnv(env, task=FLAGS.task, render=render, using_feature=using_feature, rgbd=using_rgbd)
+    env = BaxterEnv(env, task=FLAGS.task, render=render, using_feature=using_feature, rgbd=using_rgbd, print_on=test)
 
     if not tf.test.is_gpu_available() and FLAGS.use_gpu:
       raise Exception("use_gpu flag is true when no GPUs are available")
