@@ -1,16 +1,6 @@
 import os
-import sys
-FILE_PATH = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(FILE_PATH, '../..'))
-sys.path.append(os.path.join(FILE_PATH, '..', 'scripts'))
-from behavior_cloning import SimpleCNN
-from demo_baxter_rl_pushing import *
+from behavior_cloning import * #SimpleCNN
 
-
-import shutil
-import time
-
-import datetime
 import pickle
 import tensorflow as tf
 
@@ -78,7 +68,7 @@ def main():
     if FLAGS.model_type=='greedy':
         agent = GreedyAgent(env)
     elif FLAGS.model_type=='bc':
-        trained_model = SimpleCNN(FLAGS.task, model_name=FLAGS.model_name)
+        trained_model = SimpleCNN(FLAGS.task, env.action_size, model_name=FLAGS.model_name)
         agent = BCAgent(trained_model)
 
 
@@ -133,12 +123,13 @@ def main():
 
 
 class GreedyAgent():
-    def __init__(self, env):
+    def __init__(self, env, action_type='2D'):
         self.env = env
         self.task = self.env.task
         # self.using_feature = self.env.using_feature
         self.mov_dist = self.env.mov_dist
         self.action_size = self.env.action_size
+        self.action_type = action_type
 
     def get_action(self, obs):
         mov_dist = self.mov_dist
@@ -219,7 +210,6 @@ class BCAgent():
     def get_action(self, obs):
         action = self.sess.run(self.model.q_action, feed_dict={self.model.s_t: [obs]})
         return action
-
 
 
 if __name__=='__main__':

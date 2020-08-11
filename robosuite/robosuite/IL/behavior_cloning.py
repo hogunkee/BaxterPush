@@ -1,7 +1,13 @@
 import datetime
 import numpy as np
 import os
+import sys
 import pickle
+
+FILE_PATH = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(FILE_PATH, '../..'))
+sys.path.append(os.path.join(FILE_PATH, '..', 'scripts'))
+from demo_baxter_rl_pushing import *
 
 from functools import reduce
 from ops import *
@@ -10,14 +16,9 @@ from tensorboardX import SummaryWriter
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 class SimpleCNN():
-    def __init__(self, task, cnn_format='NHWC', model_name=None):
+    def __init__(self, task, action_size, cnn_format='NHWC', model_name=None):
         self.task = task
-        if task=='reach':
-            self.action_size = 10
-        elif task=='push':
-            self.action_size = 10
-        elif task=='pick':
-            self.action_size = 12
+        self.action_size = action_size
 
         self.cnn_format = cnn_format
         self.screen_height = 64
@@ -29,6 +30,9 @@ class SimpleCNN():
         self.batch_size = 128
         self.lr = 1e-4
         self.loss_type = 'l2' # 'l2' or 'ce'
+        self.test_freq = 5
+        self.num_test_ep = 1
+        self.env = None
 
         self.dueling = False
         self.now = datetime.datetime.now()
@@ -76,34 +80,20 @@ class SimpleCNN():
             self.s_t_concat = tf.concat([self.s_t_0, self.s_t_1], axis=-1)
 
             self.l1, self.w['l1_w'], self.w['l1_b'] = conv2d(self.s_t_concat,
-                32, [3, 3], [2, 2], initializer, activation_fn, self.cnn_format, name='l1')
+                32, [3, 3], [2, 2], initializer, activation_fn, self.cnn_format, padding='SAME', name='l1')
             self.l2, self.w['l2_w'], self.w['l2_b'] = conv2d(self.l1,
-                64, [3, 3], [2, 2], initializer, activation_fn, self.cnn_format, name='l2')
+                64, [3, 3], [2, 2], initializer, activation_fn, self.cnn_format, padding='SAME', name='l2')
             self.l3, self.w['l3_w'], self.w['l3_b'] = conv2d(self.l2,
-                64, [3, 3], [2, 2], initializer, activation_fn, self.cnn_format, name='l3')
+                128, [3, 3], [2, 2], initializer, activation_fn, self.cnn_format, padding='SAME', name='l3')
+            self.l4, self.w['l4_w'], self.w['l4_b'] = conv2d(self.l3,
+                256, [3, 3], [2, 2], initializer, activation_fn, self.cnn_format, padding='SAME', name='l4')
 
-            shape = self.l3.get_shape().as_list()
-            self.l3_flat = tf.reshape(self.l3, [-1, reduce(lambda x, y: x * y, shape[1:])])
+            self.l4_pool = tf.reduce_mean(self.l4, [1, 2])
 
-            if self.dueling:
-                self.value_hid, self.w['l4_val_w'], self.w['l4_val_b'] = \
-                    linear(self.l3_flat, 512, activation_fn=activation_fn, name='value_hid')
 
-                self.adv_hid, self.w['l4_adv_w'], self.w['l4_adv_b'] = \
-                    linear(self.l3_flat, 512, activation_fn=activation_fn, name='adv_hid')
-
-                self.value, self.w['val_w_out'], self.w['val_w_b'] = \
-                    linear(self.value_hid, 1, name='value_out')
-
-                self.advantage, self.w['adv_w_out'], self.w['adv_w_b'] = \
-                    linear(self.adv_hid, self.action_size, name='adv_out')
-
-                # Average Dueling
-                self.q = self.value + (self.advantage - tf.reduce_mean(self.advantage, reduction_indices=1, keep_dims=True))
-            else:
-                self.l4, self.w['l4_w'], self.w['l4_b'] = linear(self.l3_flat, 128, activation_fn=activation_fn, name='l4')
-                self.l5, self.w['l5_w'], self.w['l5_b'] = linear(self.l4, 128, activation_fn=activation_fn, name='l5')
-                self.q, self.w['q_w'], self.w['q_b'] = linear(self.l5, self.action_size, name='q')
+            self.l5, self.w['l5_w'], self.w['l5_b'] = linear(self.l4_pool, 128, activation_fn=activation_fn, name='l5')
+            self.l6, self.w['l6_w'], self.w['l6_b'] = linear(self.l5, 128, activation_fn=activation_fn, name='l6')
+            self.q, self.w['q_w'], self.w['q_b'] = linear(self.l6, self.action_size, name='q')
 
             self.q_action = tf.argmax(self.q, dimension=1)
 
@@ -136,6 +126,37 @@ class SimpleCNN():
             print(" [!] Load FAILED: %s" % self.checkpoint_dir)
             return False
 
+    def test_agent(self, sess):
+        if self.env is None:
+            return
+        success_log = []
+        for n in range(self.num_test_ep):
+            obs = self.env.reset()
+            done = False
+            cumulative_reward = 0.0
+            step_count = 0
+
+            while not done:
+                step_count += 1
+                action = sess.run(self.q_action, feed_dict={self.s_t: [obs]})
+                obs, reward, done, _ = self.env.step(action)
+                print('action: %d / reward: %.2f' % (action, reward))
+                # print(step_count, 'steps \t action: ', action, '\t reward: ', reward)
+                cumulative_reward += reward
+                if reward >= 100:
+                    success_log.append(1)
+                else:
+                    success_log.append(0)
+
+            print(step_count, cumulative_reward)
+
+        print(success_log)
+        print('success rate?:', np.mean(success_log))
+        return
+
+    def set_env(self, env):
+        self.env = env
+
     def train(self, sess):
         writer = SummaryWriter(os.path.join(FILE_PATH, 'bc_train_log/', 'tensorboard', self.task + '_' + self.now.strftime("%m%d_%H%M%S")))
         sess.run(tf.global_variables_initializer())
@@ -145,6 +166,9 @@ class SimpleCNN():
         print('Training starts..')
         bs = self.batch_size
         for epoch in range(self.num_epochs):
+            if (epoch+1) % self.test_freq == 0:
+                self.test_agent(sess)
+
             if epoch==40:
                 self.lr /= 10.0
             elif epoch==70:
@@ -177,17 +201,47 @@ class SimpleCNN():
             writer.add_scalar('train-%s/mean_accuracy'%self.task, np.mean(epoch_accur))
             print('[Epoch %d] cost: %.3f\taccur: %.3f' %(epoch, np.mean(epoch_cost), np.mean(epoch_accur)))
 
-            if np.mean(epoch_accur) > 0.95 and np.mean(epoch_accur) > self.max_accur:
+            if np.mean(epoch_accur) > 0.90 and np.mean(epoch_accur) > self.max_accur:
                 self.saver.save(sess, os.path.join(self.checkpoint_dir, 'model'), global_step=epoch)
                 self.max_accur = np.mean(epoch_accur)
 
         print('Training done!')
         return
 
+
 def main():
+    task = 'reach'
+    action_type = '3D' # '2D' / '3D'
+
+    render = True
+    screen_width = 64
+    screen_height = 64
+    rgbd = True
+
+    env = robosuite.make(
+        "BaxterPush",
+        bin_type='table',
+        object_type='cube',
+        ignore_done=True,
+        has_renderer=True,
+        camera_name="eye_on_right_wrist",
+        gripper_visualization=False,
+        use_camera_obs=False,
+        use_object_obs=False,
+        camera_depth=True,
+        num_objects=2,
+        control_freq=100,
+        camera_width=screen_width,
+        camera_height=screen_height,
+        crop=None
+    )
+    env = IKWrapper(env)
+    env = BaxterEnv(env, task=task, render=render, using_feature=False, rgbd=rgbd)
+
     data_path = 'data'
-    model = SimpleCNN(task='reach')
+    model = SimpleCNN(task=task, action_size=env.action_size)
     model.set_datapath(data_path)
+    model.set_env(env)
 
     gpu_config = tf.ConfigProto()
     gpu_config.gpu_options.allow_growth = True
