@@ -17,14 +17,14 @@ INIT_ARM_POS = [0.40933302, -1.24377906, 0.68787495, 2.03907987, -0.27229507, 0.
 from gym import spaces
 
 class BaxterEnv():
-    def __init__(self, env, task='push', continuous=False, render=True, using_feature=False, random_spawn=True, rgbd=False, print_on=False):
+    def __init__(self, env, task='push', continuous=False, render=True, using_feature=False, random_spawn=True, rgbd=False, print_on=False, action_type='3D'):
         self.env = env
         self.task = task # 'reach', 'push' or 'pick'
         self.is_continuous = continuous
         self.rgbd = rgbd
         self.print_on = print_on
 
-        self.action_type = '3D' #'2D' # or '3D'
+        self.action_type = action_type #'2D' # or '3D'
 
         if self.is_continuous:
             if task=='reach':
@@ -44,7 +44,7 @@ class BaxterEnv():
             elif task=='push':
                 if self.action_type=='2D':
                     action_size = 8
-                elif self.actin_type=='3D':
+                elif self.action_type=='3D':
                     action_size = 10 #12
             elif task=='pick':
                 action_size = 12

@@ -26,11 +26,11 @@ class SimpleCNN():
         self.screen_channel = 4
 
         self.data_path = None
-        self.num_epochs = 70
+        self.num_epochs = 100
         self.batch_size = 128
-        self.lr = 1e-4
+        self.lr = 1e-3
         self.loss_type = 'l2' # 'l2' or 'ce'
-        self.test_freq = 5
+        self.test_freq = 20
         self.num_test_ep = 1
         self.env = None
 
@@ -143,11 +143,11 @@ class SimpleCNN():
                 print('action: %d / reward: %.2f' % (action, reward))
                 # print(step_count, 'steps \t action: ', action, '\t reward: ', reward)
                 cumulative_reward += reward
-                if reward >= 100:
-                    success_log.append(1)
-                else:
-                    success_log.append(0)
 
+            if reward >= 100:
+                success_log.append(1)
+            else:
+                success_log.append(0)
             print(step_count, cumulative_reward)
 
         print(success_log)
@@ -166,9 +166,6 @@ class SimpleCNN():
         print('Training starts..')
         bs = self.batch_size
         for epoch in range(self.num_epochs):
-            if (epoch+1) % self.test_freq == 0:
-                self.test_agent(sess)
-
             if epoch==40:
                 self.lr /= 10.0
             elif epoch==70:
@@ -201,16 +198,20 @@ class SimpleCNN():
             writer.add_scalar('train-%s/mean_accuracy'%self.task, np.mean(epoch_accur))
             print('[Epoch %d] cost: %.3f\taccur: %.3f' %(epoch, np.mean(epoch_cost), np.mean(epoch_accur)))
 
+            # save the model parameters
             if np.mean(epoch_accur) > 0.90 and np.mean(epoch_accur) > self.max_accur:
                 self.saver.save(sess, os.path.join(self.checkpoint_dir, 'model'), global_step=epoch)
                 self.max_accur = np.mean(epoch_accur)
+            # performance evaluation
+            if (epoch+1) % self.test_freq == 0:
+                self.test_agent(sess)
 
         print('Training done!')
         return
 
 
 def main():
-    task = 'reach'
+    task = 'push' # 'reach' / 'push'
     action_type = '3D' # '2D' / '3D'
 
     render = True
@@ -236,7 +237,7 @@ def main():
         crop=None
     )
     env = IKWrapper(env)
-    env = BaxterEnv(env, task=task, render=render, using_feature=False, rgbd=rgbd)
+    env = BaxterEnv(env, task=task, render=render, using_feature=False, rgbd=rgbd, action_type=action_type)
 
     data_path = 'data'
     model = SimpleCNN(task=task, action_size=env.action_size)
