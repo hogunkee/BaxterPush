@@ -24,7 +24,7 @@ class BaxterEnv():
         self.rgbd = rgbd
         self.print_on = print_on
 
-        self.action_type = '2D' # or '3D'
+        self.action_type = '3D' #'2D' # or '3D'
 
         if self.is_continuous:
             if task=='reach':
@@ -39,7 +39,7 @@ class BaxterEnv():
             if task=='reach':
                 if self.action_type=='2D':
                     action_size = 8
-                elif self.actin_type=='3D':
+                elif self.action_type=='3D':
                     action_size = 10 #8
             elif task=='push':
                 if self.action_type=='2D':
@@ -94,8 +94,10 @@ class BaxterEnv():
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(random_quat()))
         # self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
-        self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085])
-        # self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16])  # 0.16
+        if self.action_type=='2D':
+            self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085])
+        elif self.action_type=='3D':
+            self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16])  # 0.16
 
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(random_quat()))

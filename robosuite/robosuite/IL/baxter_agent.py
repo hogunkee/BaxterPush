@@ -21,10 +21,10 @@ flags.DEFINE_integer('use_feature', 0, 'using feature-base states or image-base 
 flags.DEFINE_string('task', 'reach', 'name of task: [ reach / push / pick ]')
 
 flags.DEFINE_integer('save_data', 1, 'save data or not')
-flags.DEFINE_integer('max_buff', 10000, 'number of steps saved in one data file.')
+flags.DEFINE_integer('max_buff', 2000, 'number of steps saved in one data file.')
 
 flags.DEFINE_string('model_type', 'greedy', 'greedy / bc')
-flags.DEFINE_string('model_name', 'reach_0731_162446', 'name of the trained BC model')
+flags.DEFINE_string('model_name', 'reach_0811_191540', 'name of the trained BC model')
 
 FLAGS = flags.FLAGS
 using_feature = (FLAGS.use_feature==1)
@@ -73,7 +73,7 @@ def main():
         crop=crop
     )
     env = IKWrapper(env)
-    env = BaxterEnv(env, task=FLAGS.task, render=render, using_feature=using_feature)
+    env = BaxterEnv(env, task=FLAGS.task, render=render, using_feature=using_feature, rgbd=True)
 
     if FLAGS.model_type=='greedy':
         agent = GreedyAgent(env)

@@ -28,6 +28,7 @@ class SimpleCNN():
         self.num_epochs = 70
         self.batch_size = 128
         self.lr = 1e-4
+        self.loss_type = 'l2' # 'l2' or 'ce'
 
         self.dueling = False
         self.now = datetime.datetime.now()
@@ -70,27 +71,19 @@ class SimpleCNN():
             else:
                 self.s_t = tf.placeholder('float32', [None, 2, self.screen_channel, self.screen_height, self.screen_width], name='s_t')
 
-            self.s_t_0 = self.s_t[:, 0, :, :]
-            self.s_t_1 = self.s_t[:, 1, :, :]
+            self.s_t_0 = self.s_t[:, 0, :, :, :]
+            self.s_t_1 = self.s_t[:, 1, :, :, :]
+            self.s_t_concat = tf.concat([self.s_t_0, self.s_t_1], axis=-1)
 
-            self.l1_0, self.w['l1_w0'], self.w['l1_b0'] = conv2d(self.s_t_0,
-                32, [8, 8], [4, 4], initializer, activation_fn, self.cnn_format, name='l1_0')
-            self.l2_0, self.w['l2_w0'], self.w['l2_b0'] = conv2d(self.l1_0,
-                64, [4, 4], [2, 2], initializer, activation_fn, self.cnn_format, name='l2_0')
-            self.l3_0, self.w['l3_w0'], self.w['l3_b0'] = conv2d(self.l2_0,
-                64, [3, 3], [1, 1], initializer, activation_fn, self.cnn_format, name='l3_0')
+            self.l1, self.w['l1_w'], self.w['l1_b'] = conv2d(self.s_t_concat,
+                32, [3, 3], [2, 2], initializer, activation_fn, self.cnn_format, name='l1')
+            self.l2, self.w['l2_w'], self.w['l2_b'] = conv2d(self.l1,
+                64, [3, 3], [2, 2], initializer, activation_fn, self.cnn_format, name='l2')
+            self.l3, self.w['l3_w'], self.w['l3_b'] = conv2d(self.l2,
+                64, [3, 3], [2, 2], initializer, activation_fn, self.cnn_format, name='l3')
 
-            self.l1_1, self.w['l1_w1'], self.w['l1_b1'] = conv2d(self.s_t_1,
-                 32, [8, 8], [4, 4], initializer, activation_fn, self.cnn_format, name='l1_1')
-            self.l2_1, self.w['l2_w1'], self.w['l2_b1'] = conv2d(self.l1_1,
-                 64, [4, 4], [2, 2], initializer, activation_fn, self.cnn_format, name='l2_1')
-            self.l3_1, self.w['l3_w1'], self.w['l3_b1'] = conv2d(self.l2_1,
-                 64, [3, 3], [1, 1], initializer, activation_fn, self.cnn_format, name='l3_1')
-
-            shape = self.l3_0.get_shape().as_list()
-            self.l3_flat_0 = tf.reshape(self.l3_0, [-1, reduce(lambda x, y: x * y, shape[1:])])
-            self.l3_flat_1 = tf.reshape(self.l3_1, [-1, reduce(lambda x, y: x * y, shape[1:])])
-            self.l3_flat = tf.concat([self.l3_flat_0, self.l3_flat_1], axis=1)
+            shape = self.l3.get_shape().as_list()
+            self.l3_flat = tf.reshape(self.l3, [-1, reduce(lambda x, y: x * y, shape[1:])])
 
             if self.dueling:
                 self.value_hid, self.w['l4_val_w'], self.w['l4_val_b'] = \
@@ -108,12 +101,17 @@ class SimpleCNN():
                 # Average Dueling
                 self.q = self.value + (self.advantage - tf.reduce_mean(self.advantage, reduction_indices=1, keep_dims=True))
             else:
-                self.l4, self.w['l4_w'], self.w['l4_b'] = linear(self.l3_flat, 512, activation_fn=activation_fn, name='l4')
-                self.q, self.w['q_w'], self.w['q_b'] = linear(self.l4, self.action_size, name='q')
+                self.l4, self.w['l4_w'], self.w['l4_b'] = linear(self.l3_flat, 128, activation_fn=activation_fn, name='l4')
+                self.l5, self.w['l5_w'], self.w['l5_b'] = linear(self.l4, 128, activation_fn=activation_fn, name='l5')
+                self.q, self.w['q_w'], self.w['q_b'] = linear(self.l5, self.action_size, name='q')
 
             self.q_action = tf.argmax(self.q, dimension=1)
 
-            cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.q, labels=tf.one_hot(self.a_true, depth=self.action_size))
+            if self.loss_type=='ce':
+                cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.q, labels=tf.one_hot(self.a_true, depth=self.action_size))
+            elif self.loss_type=='l2':
+                cross_entropy = tf.nn.l2_loss(self.q - tf.one_hot(self.a_true, depth=self.action_size))
+
             self.cost = tf.reduce_mean(cross_entropy)
             self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.cost)
 
@@ -154,13 +152,18 @@ class SimpleCNN():
 
             epoch_cost = []
             epoch_accur = []
-            for p_idx in range(len(self.a_list)):
+            for p_idx in np.random.permutation(len(self.a_list)):
                 pkl_action = self.a_list[p_idx]
                 pkl_state = self.s_list[p_idx]
                 assert pkl_action[-5:] == pkl_state[-5:]
                 buff_actions = self.load_pkl(pkl_action)
                 buff_states = self.load_pkl(pkl_state)
                 assert len(buff_actions) == len(buff_states)
+
+                shuffler = np.random.permutation(len(buff_actions))
+                buff_actions = buff_actions[shuffler]
+                buff_states = buff_states[shuffler]
+                buff_states = np.clip(buff_states, 0.0, 5.0)
 
                 for i in range(len(buff_actions)//bs):
                     batch_actions = buff_actions[bs * i:bs * (i + 1)]
