@@ -211,7 +211,7 @@ class SimpleCNN():
 
 
 def main():
-    task = 'push' # 'reach' / 'push'
+    task = 'reach' # 'reach' / 'push'
     action_type = '3D' # '2D' / '3D'
 
     render = True
