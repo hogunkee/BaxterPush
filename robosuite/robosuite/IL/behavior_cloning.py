@@ -177,8 +177,8 @@ class SimpleCNN():
                 pkl_action = self.a_list[p_idx]
                 pkl_state = self.s_list[p_idx]
                 assert pkl_action[-5:] == pkl_state[-5:]
-                buff_actions = self.load_pkl(pkl_action)[1:]
-                buff_states = self.load_pkl(pkl_state)[:-1]
+                buff_actions = self.load_pkl(pkl_action) #[1:]
+                buff_states = self.load_pkl(pkl_state) #[:-1]
                 assert len(buff_actions) == len(buff_states)
 
                 shuffler = np.random.permutation(len(buff_actions))

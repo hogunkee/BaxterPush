@@ -38,9 +38,9 @@ if FLAGS.model_type=='bc':
 
 
 # camera resolution
-screen_width = 64
-screen_height = 64
-crop = None
+screen_width = 192 #64
+screen_height = 192 #64
+crop = 128
 
 # Path which data will be saved in.
 save_name = os.path.join(FILE_PATH, 'data')
@@ -74,56 +74,65 @@ def main():
         trained_model = SimpleCNN(task, env.action_size, model_name=FLAGS.model_name)
         agent = BCAgent(trained_model)
 
-
     if not os.path.exists(save_name):
         os.makedirs(save_name)
 
+    total_steps = 0
     success_log = []
     buff_states = []
     buff_actions = []
     for n in range(FLAGS.num_episodes):
         if print_on:
-            print('[Episode %d'%n)
+            print('[Episode %d]'%n)
         obs = env.reset()
         done = False
         cumulative_reward = 0.0
         step_count = 0
+        ep_buff_states = []
+        ep_buff_actions = []
 
         while not done:
             step_count += 1
             action = agent.get_action(obs)
-            old_obs = obs.copy()
-            obs, reward, done, _ = env.step(action)
+            new_obs, reward, done, _ = env.step(action)
+            total_steps += 1
             if print_on:
                 print('action: %d / reward: %.2f'%(action, reward))
             # print(step_count, 'steps \t action: ', action, '\t reward: ', reward)
             cumulative_reward += reward
-            if reward>=100:
-                success_log.append(1)
-            else:
-                success_log.append(0)
+
+            ep_buff_states.append(obs)
+            ep_buff_actions.append(action)
+            obs = new_obs
+
+        success = (cumulative_reward >= 90)
+        success_log.append(int(success))
+        if success:
+            buff_states += ep_buff_states
+            buff_actions += ep_buff_actions
 
             # recording the trajectories
             if save_data:
                 if not os.path.isdir(save_name):
                     os.makedirs(save_name)
-                buff_states.append(old_obs)
-                buff_actions.append(action)
                 if len(buff_states) >= FLAGS.max_buff:
                     f_list = os.listdir(save_name)
                     num_pickles = len([f for f in f_list if task in f])
                     save_num = num_pickles // 2
                     with open(os.path.join(save_name, task + '_s_%d.pkl'%save_num), 'wb') as f:
-                        pickle.dump(np.array(buff_states), f)
+                        pickle.dump(np.array(buff_states)[:FLAGS.max_buff], f)
                     with open(os.path.join(save_name, task + '_a_%d.pkl'%save_num), 'wb') as f:
-                        pickle.dump(np.array(buff_actions), f)
+                        pickle.dump(np.array(buff_actions)[:FLAGS.max_buff], f)
                     print(save_num, '-th file saved.')
-                    buff_states, buff_actions = [], []
+                    buff_states = buff_states[FLAGS.max_buff:]
+                    buff_actions = buff_actions[FLAGS.max_buff:]
+                    # buff_states, buff_actions = [], []
 
         if print_on:
             print('success rate?:', np.mean(success_log), success_log)
-        print('Episode %d ends.'%(n+1))
-        print(step_count, cumulative_reward)
+        print('Episode %d ends.'%(n+1), '( Total steps:', total_steps, ')')
+        print('Ep len:', step_count, 'steps.   Ep reward:', cumulative_reward)
+        print()
 
 
 class GreedyAgent():
