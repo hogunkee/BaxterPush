@@ -85,13 +85,6 @@ def main():
         if print_on:
             print('[Episode %d'%n)
         obs = env.reset()
-
-        from matplotlib import pyplot as plt
-        plt.imshow(obs[0][:, :, :3])
-        plt.show()
-        plt.imshow(obs[1][:, :, :3])
-        plt.show()
-
         done = False
         cumulative_reward = 0.0
         step_count = 0
