@@ -9,6 +9,7 @@ flags.DEFINE_integer('render', 0, 'render the screens')
 flags.DEFINE_integer('num_episodes', 10000, 'number of episodes')
 flags.DEFINE_integer('use_feature', 0, 'using feature-base states or image-base states.')
 flags.DEFINE_string('task', 'reach', 'name of task: [ reach / push / pick ]')
+flags.DEFINE_string('action_type', '3D', '[ 2D / 3D ]')
 
 flags.DEFINE_integer('save_data', 1, 'save data or not')
 flags.DEFINE_integer('max_buff', 2000, 'number of steps saved in one data file.')
@@ -26,6 +27,8 @@ else:
 render = bool(FLAGS.render)
 save_data = bool(FLAGS.save_data)
 print_on = False
+task = FLAGS.task
+action_type = FLAGS.action_type
 
 if FLAGS.model_type=='bc':
     render = True
@@ -63,12 +66,12 @@ def main():
         crop=crop
     )
     env = IKWrapper(env)
-    env = BaxterEnv(env, task=FLAGS.task, render=render, using_feature=using_feature, rgbd=True)
+    env = BaxterEnv(env, task=task, render=render, using_feature=using_feature, rgbd=True, action_type=action_type)
 
     if FLAGS.model_type=='greedy':
         agent = GreedyAgent(env)
     elif FLAGS.model_type=='bc':
-        trained_model = SimpleCNN(FLAGS.task, env.action_size, model_name=FLAGS.model_name)
+        trained_model = SimpleCNN(task, env.action_size, model_name=FLAGS.model_name)
         agent = BCAgent(trained_model)
 
 
@@ -82,6 +85,13 @@ def main():
         if print_on:
             print('[Episode %d'%n)
         obs = env.reset()
+
+        from matplotlib import pyplot as plt
+        plt.imshow(obs[0][:, :, :3])
+        plt.show()
+        plt.imshow(obs[1][:, :, :3])
+        plt.show()
+
         done = False
         cumulative_reward = 0.0
         step_count = 0
@@ -89,6 +99,7 @@ def main():
         while not done:
             step_count += 1
             action = agent.get_action(obs)
+            old_obs = obs.copy()
             obs, reward, done, _ = env.step(action)
             if print_on:
                 print('action: %d / reward: %.2f'%(action, reward))
@@ -103,7 +114,7 @@ def main():
             if save_data:
                 if not os.path.isdir(save_name):
                     os.makedirs(save_name)
-                buff_states.append(obs)
+                buff_states.append(old_obs)
                 buff_actions.append(action)
                 if len(buff_states) >= FLAGS.max_buff:
                     f_list = os.listdir(save_name)
