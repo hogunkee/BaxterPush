@@ -104,10 +104,10 @@ class BaxterEnv():
             arena_pos +  + np.array([0.0, 0.0, 0.05])
             if self.task=='reach':
                 # self.state[6:9] = arena_pos + np.random.uniform(low=-1.0, high=1.0, size=3) * np.array([spawn_range, spawn_range, 0.0]) \
-                #                   + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085])
-                self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085])
+                #                   + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.08])
+                self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085]) # 0.085
             elif self.task=='push':
-                self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085])
+                self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.075])
         elif self.action_type=='3D':
             if self.task=='reach':
                 self.state[6:9] = arena_pos + np.random.uniform(low=-1.0, high=1.0, size=3) * np.array([spawn_range, spawn_range, 0.0])\

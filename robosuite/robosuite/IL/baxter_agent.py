@@ -175,10 +175,16 @@ class GreedyAgent():
                     mov_vec_list.append(np.array([mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree)]))
                 mov_cos_list = [self.get_cos(v, vec_obj_arm[:2]) for v in mov_vec_list]
 
-                if self.get_cos(vec_target_obj[:2], vec_obj_arm[:2]) > 0:
+                pred_vec_target_obj = vec_target_obj - self.mov_dist * vec_obj_arm / np.linalg.norm(vec_obj_arm)
+
+                # if self.get_cos(vec_target_obj[:2], vec_obj_arm[:2]) > np.cos(np.pi/4): # > 0
+                if self.get_cos(pred_vec_target_obj[:2], vec_obj_arm[:2]) > np.cos(np.pi / 5):  # > 0
                     action = np.argmax(mov_cos_list)
                 else:
-                    action = -1
+                    # action = -1
+                    next_obj_arm = [vec_obj_arm[:2] - v for v in mov_vec_list]
+                    next_cos_list = [self.get_cos(vec_target_obj[:2], w) for w in next_obj_arm]
+                    action = np.argmax(next_cos_list)
 
             elif self.action_type=='3D':
                 vec_target_obj = self.env.target_pos - self.env.obj_pos

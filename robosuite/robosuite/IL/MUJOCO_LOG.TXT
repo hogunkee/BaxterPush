@@ -1,0 +1,3 @@
+Fri Aug 14 00:32:47 2020
+ERROR: Could not allocate memory
+
