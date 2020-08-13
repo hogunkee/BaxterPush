@@ -212,11 +212,12 @@ class SimpleCNN():
 
 def main():
     task = 'reach' # 'reach' / 'push'
-    action_type = '3D' # '2D' / '3D'
+    action_type = '2D' # '2D' / '3D'
 
     render = True
-    screen_width = 64
-    screen_height = 64
+    screen_width = 192 #264
+    screen_height = 192 #64
+    crop = 128
     rgbd = True
 
     env = robosuite.make(
@@ -234,7 +235,7 @@ def main():
         control_freq=100,
         camera_width=screen_width,
         camera_height=screen_height,
-        crop=None
+        crop=crop
     )
     env = IKWrapper(env)
     env = BaxterEnv(env, task=task, render=render, using_feature=False, rgbd=rgbd, action_type=action_type)
