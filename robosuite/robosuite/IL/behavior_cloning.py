@@ -44,7 +44,7 @@ class SimpleCNN():
         self.checkpoint_dir = os.path.join(FILE_PATH, 'bc_train_log/', 'checkpoint/', self.model_name)
 
         self.build_net()
-        self.saver = tf.train.Saver(max_to_keep=10)
+        self.saver = tf.train.Saver(max_to_keep=20)
         self.max_accur = 0.0
 
 
@@ -130,6 +130,7 @@ class SimpleCNN():
     def test_agent(self, sess):
         if self.env is None:
             return
+
         success_log = []
         for n in range(self.num_test_ep):
             obs = self.env.reset()
@@ -216,9 +217,9 @@ class SimpleCNN():
                     test_accur.append(accuracy)
                 test_accuracy = np.mean(test_accur)
 
-            writer.add_scalar('train-%s/test_accuracy' % self.task, test_accuracy)
-            writer.add_scalar('train-%s/mean_cost'%self.task, np.mean(epoch_cost))
-            writer.add_scalar('train-%s/mean_accuracy'%self.task, np.mean(epoch_accur))
+            writer.add_scalar('train-%s/test_accuracy' % self.task, test_accuracy, epoch+1)
+            writer.add_scalar('train-%s/train_cost'%self.task, np.mean(epoch_cost), epoch+!)
+            writer.add_scalar('train-%s/train_accuracy'%self.task, np.mean(epoch_accur), epoch+1)
             print('[Epoch %d] cost: %.3f\ttrain accur: %.3f\ttest accur: %.3f' %(epoch, np.mean(epoch_cost), np.mean(epoch_accur), test_accuracy))
 
             # save the model parameters
@@ -239,33 +240,40 @@ def main():
     action_type = '2D' # '2D' / '3D'
 
     render = True
+    eval = True
     screen_width = 192 #264
     screen_height = 192 #64
     crop = 128
     rgbd = True
 
-    env = robosuite.make(
-        "BaxterPush",
-        bin_type='table',
-        object_type='cube',
-        ignore_done=True,
-        has_renderer=True,
-        camera_name="eye_on_right_wrist",
-        gripper_visualization=False,
-        use_camera_obs=False,
-        use_object_obs=False,
-        camera_depth=True,
-        num_objects=2,
-        control_freq=100,
-        camera_width=screen_width,
-        camera_height=screen_height,
-        crop=crop
-    )
-    env = IKWrapper(env)
-    env = BaxterEnv(env, task=task, render=render, using_feature=False, rgbd=rgbd, action_type=action_type)
+    env = None
+    if eval:
+        env = robosuite.make(
+            "BaxterPush",
+            bin_type='table',
+            object_type='cube',
+            ignore_done=True,
+            has_renderer=True,
+            camera_name="eye_on_right_wrist",
+            gripper_visualization=False,
+            use_camera_obs=False,
+            use_object_obs=False,
+            camera_depth=True,
+            num_objects=2,
+            control_freq=100,
+            camera_width=screen_width,
+            camera_height=screen_height,
+            crop=crop
+        )
+        env = IKWrapper(env)
+        env = BaxterEnv(env, task=task, render=render, using_feature=False, rgbd=rgbd, action_type=action_type)
+        action_size = env.actoin_size
 
-    data_path = '/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data' #'data'
-    model = SimpleCNN(task=task, action_size=env.action_size)
+    if env is None:
+        action_size = 8 if action_type=='2D' else 10
+
+    data_path = 'data' # '/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
+    model = SimpleCNN(task=task, action_size=action_size)
     model.set_datapath(data_path)
     model.set_env(env)
 
