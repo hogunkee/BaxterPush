@@ -101,9 +101,19 @@ class BaxterEnv():
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(random_quat()))
         # self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
         if self.action_type=='2D':
-            self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085])
+            arena_pos +  + np.array([0.0, 0.0, 0.05])
+            if self.task=='reach':
+                # self.state[6:9] = arena_pos + np.random.uniform(low=-1.0, high=1.0, size=3) * np.array([spawn_range, spawn_range, 0.0]) \
+                #                   + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085])
+                self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085])
+            elif self.task=='push':
+                self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085])
         elif self.action_type=='3D':
-            self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16])  # 0.16
+            if self.task=='reach':
+                self.state[6:9] = arena_pos + np.random.uniform(low=-1.0, high=1.0, size=3) * np.array([spawn_range, spawn_range, 0.0])\
+                                  + np.array([0.0, 0.0, 0.16])  # 0.16
+            elif self.task=='push':
+                self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16])  # 0.16
 
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(random_quat()))

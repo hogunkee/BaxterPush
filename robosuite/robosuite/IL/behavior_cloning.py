@@ -31,7 +31,7 @@ class SimpleCNN():
         self.lr = 1e-3
         self.loss_type = 'l2' # 'l2' or 'ce'
         self.test_freq = 1
-        self.eval_freq = 10
+        self.eval_freq = 100
         self.num_test_ep = 3
         self.env = None
 
@@ -264,7 +264,7 @@ def main():
     env = IKWrapper(env)
     env = BaxterEnv(env, task=task, render=render, using_feature=False, rgbd=rgbd, action_type=action_type)
 
-    data_path = 'data'
+    data_path = '/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data' #'data'
     model = SimpleCNN(task=task, action_size=env.action_size)
     model.set_datapath(data_path)
     model.set_env(env)
