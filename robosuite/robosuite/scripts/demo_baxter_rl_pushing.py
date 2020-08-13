@@ -80,7 +80,7 @@ class BaxterEnv():
             threshold = 0.25
         else:
             spawn_range = 0.15
-            threshold = 0.15
+            threshold = 0.20
 
         self.env.reset()
         if self.random_spawn:
@@ -135,7 +135,7 @@ class BaxterEnv():
         if self.task == 'push':
             ## set the robot arm next to the block ##
             align_direction = self.pre_vec[:2] / np.linalg.norm(self.pre_vec[:2])
-            self.state[6:8] = self.obj_pos[:2] - 1.5 * self.mov_dist * align_direction
+            self.state[6:8] = self.obj_pos[:2] - 2.0 * self.mov_dist * align_direction
 
         stucked = move_to_pos(self.env, [0.4, 0.6, 1.0], [0.4, -0.6, 1.0], arm='both', level=1.0, render=self.render)
         if self.task == 'push':
@@ -168,6 +168,13 @@ class BaxterEnv():
 
     def step(self, action):
         self.step_count += 1
+        if np.squeeze(action)==-1:
+            im_1, im_2 = self.get_camera_obs()
+            state = [im_1, im_2]
+            reward = 0.0
+            done = True
+            return state, reward, done, {}
+
         if self.is_continuous:
             # [dx, dy, dz] + [cos(theta), sin(theta), grasp]
             action = np.squeeze(action)
@@ -251,41 +258,85 @@ class BaxterEnv():
                     reward = -0.1
 
         elif self.task == 'push':
-            # C1 = 1
-            # C2 = 100
-            arm_euler = quat2euler(self.env.env._right_hand_quat)
-            # if stucked == -1 or #1 - np.abs(self.env.env._right_hand_quat[1]) > 0.01:
-            if stucked == -1 or check_stucked(arm_euler):
-                reward = 0.0 #-10
-                done = True
-                print('episode done. [STUCKED]')
-            else:
-                x = np.linalg.norm(vec)
-                x_old = np.linalg.norm(self.pre_vec)
-                d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
-                d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
+            if self.action_type=='2D':
+                def get_cos(vec1, vec2):
+                    return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
 
-                if np.linalg.norm(vec) < 0.10: #0.05
-                    reward = 100
+                vec_target_obj = self.target_pos - self.obj_pos
+                vec_obj_arm = self.obj_pos - self.arm_pos
+                arm_euler = quat2euler(self.env.env._right_hand_quat)
+                # if stucked == -1 or #1 - np.abs(self.env.env._right_hand_quat[1]) > 0.01:
+                if stucked == -1 or check_stucked(arm_euler):
+                    reward = 0.0  # -10
                     done = True
-                    print('episode done. [SUCCESS]')
-                # get away #
-                elif d1 > 0.4:
-                    reward = -5
-                    done = True
-                elif d1 > 2 * self.mov_dist:
-                    reward = -0.5
-                # moving distance reward #
-                elif x_old - x > 0.01:
-                    reward = 2.0 # 100 * (x_old - x)
-                # touching reward #
-                elif np.linalg.norm(self.obj_pos - self.pre_obj_pos) > 0.01:
-                    reward = 1.0
-                # step penalty #
+                    print('episode done. [STUCKED]')
                 else:
-                    reward = 0.0
+                    x = np.linalg.norm(vec)
+                    x_old = np.linalg.norm(self.pre_vec)
+                    d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
+                    d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
 
-                self.pre_vec = vec
+                    if np.linalg.norm(vec) < 0.10: #0.05
+                        reward = 100
+                        done = True
+                        print('episode done. [SUCCESS]')
+                    elif get_cos(vec_target_obj[:2], vec_obj_arm[:2]) < 0 and np.linalg.norm(vec_obj_arm[:2]) > 0.02:
+                        reward = 0.0
+                        done = True
+                    # get away #
+                    elif d1 > 0.4:
+                        reward = -5
+                        done = True
+                    elif d1 > 2 * self.mov_dist:
+                        reward = -0.5
+                    # moving distance reward #
+                    elif x_old - x > 0.01:
+                        reward = 2.0 # 100 * (x_old - x)
+                    # touching reward #
+                    elif np.linalg.norm(self.obj_pos - self.pre_obj_pos) > 0.01:
+                        reward = 1.0
+                    # step penalty #
+                    else:
+                        reward = 0.0
+
+                    self.pre_vec = vec
+
+            elif self.action_type=='3D':
+                # C1 = 1
+                # C2 = 100
+                arm_euler = quat2euler(self.env.env._right_hand_quat)
+                # if stucked == -1 or #1 - np.abs(self.env.env._right_hand_quat[1]) > 0.01:
+                if stucked == -1 or check_stucked(arm_euler):
+                    reward = 0.0 #-10
+                    done = True
+                    print('episode done. [STUCKED]')
+                else:
+                    x = np.linalg.norm(vec)
+                    x_old = np.linalg.norm(self.pre_vec)
+                    d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
+                    d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
+
+                    if np.linalg.norm(vec) < 0.10: #0.05
+                        reward = 100
+                        done = True
+                        print('episode done. [SUCCESS]')
+                    # get away #
+                    elif d1 > 0.4:
+                        reward = -5
+                        done = True
+                    elif d1 > 2 * self.mov_dist:
+                        reward = -0.5
+                    # moving distance reward #
+                    elif x_old - x > 0.01:
+                        reward = 2.0 # 100 * (x_old - x)
+                    # touching reward #
+                    elif np.linalg.norm(self.obj_pos - self.pre_obj_pos) > 0.01:
+                        reward = 1.0
+                    # step penalty #
+                    else:
+                        reward = 0.0
+
+                    self.pre_vec = vec
 
         elif self.task == 'pick':
             if self.obj_pos[2] - self.init_obj_pos[2] > 0.3:

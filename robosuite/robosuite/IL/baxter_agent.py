@@ -166,45 +166,60 @@ class GreedyAgent():
             action = np.argmin(predicted_distance_list)
 
         elif self.task == 'push':
-            vec_target_obj = self.env.target_pos - self.env.obj_pos
-            vec_obj_arm = self.env.obj_pos - self.env.arm_pos
-            mov_vec_list = []
-            for a in range(8):
-                mov_degree = a * np.pi / 4.0
-                mov_vec_list.append(np.array([mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree)]))
-                # elif a == 8:
-                #     mov_vec_list.append(np.array([0.0, 0.0, mov_dist]))
-                # elif a == 9:
-                #     mov_vec_list.append(np.array([0.0, 0.0, -mov_dist]))
-            mov_cos_list = [self.get_cos(v, vec_obj_arm[:2]) for v in mov_vec_list]
+            if self.action_type=='2D':
+                vec_target_obj = self.env.target_pos - self.env.obj_pos
+                vec_obj_arm = self.env.obj_pos - self.env.arm_pos
+                mov_vec_list = []
+                for a in range(8):
+                    mov_degree = a * np.pi / 4.0
+                    mov_vec_list.append(np.array([mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree)]))
+                mov_cos_list = [self.get_cos(v, vec_obj_arm[:2]) for v in mov_vec_list]
 
-            if self.get_cos(vec_target_obj[:2], vec_obj_arm[:2]) > 0:
-                if self.env.arm_pos[2] < 0.65:
+                if self.get_cos(vec_target_obj[:2], vec_obj_arm[:2]) > 0:
                     action = np.argmax(mov_cos_list)
                 else:
-                    if np.linalg.norm(vec_obj_arm) > 2.0 * mov_dist:
-                        action = 9
+                    action = -1
+
+            elif self.action_type=='3D':
+                vec_target_obj = self.env.target_pos - self.env.obj_pos
+                vec_obj_arm = self.env.obj_pos - self.env.arm_pos
+                mov_vec_list = []
+                for a in range(8):
+                    mov_degree = a * np.pi / 4.0
+                    mov_vec_list.append(np.array([mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree)]))
+                    # elif a == 8:
+                    #     mov_vec_list.append(np.array([0.0, 0.0, mov_dist]))
+                    # elif a == 9:
+                    #     mov_vec_list.append(np.array([0.0, 0.0, -mov_dist]))
+                mov_cos_list = [self.get_cos(v, vec_obj_arm[:2]) for v in mov_vec_list]
+
+                if self.get_cos(vec_target_obj[:2], vec_obj_arm[:2]) > 0:
+                    if self.env.arm_pos[2] < 0.65:
+                        action = np.argmax(mov_cos_list)
+                    else:
+                        if np.linalg.norm(vec_obj_arm) > 2.0 * mov_dist:
+                            action = 9
+                        else:
+                            next_obj_arm = [vec_obj_arm[:2] - v for v in mov_vec_list]
+                            next_cos_list = [self.get_cos(vec_target_obj[:2], w) for w in next_obj_arm]
+                            action = np.argmax(next_cos_list)
+                            '''
+                            best_a = np.argmax(mov_cos_list)
+                            mov_cos_list[best_a] = np.min(mov_cos_list)
+                            next_best_a = np.argmax(mov_cos_list)
+                            if self.get_cos(mov_vec_list[best_a][:2], vec_target_obj[:2]) > 0:
+                                action = best_a
+                            else:
+                                action = next_best_a
+                            action = (action + 4) % 8
+                            '''
+                else:
+                    if self.env.arm_pos[2] < 0.65:
+                        action = 8
                     else:
                         next_obj_arm = [vec_obj_arm[:2] - v for v in mov_vec_list]
                         next_cos_list = [self.get_cos(vec_target_obj[:2], w) for w in next_obj_arm]
                         action = np.argmax(next_cos_list)
-                        '''
-                        best_a = np.argmax(mov_cos_list)
-                        mov_cos_list[best_a] = np.min(mov_cos_list)
-                        next_best_a = np.argmax(mov_cos_list)
-                        if self.get_cos(mov_vec_list[best_a][:2], vec_target_obj[:2]) > 0:
-                            action = best_a
-                        else:
-                            action = next_best_a
-                        action = (action + 4) % 8
-                        '''
-            else:
-                if self.env.arm_pos[2] < 0.65:
-                    action = 8
-                else:
-                    next_obj_arm = [vec_obj_arm[:2] - v for v in mov_vec_list]
-                    next_cos_list = [self.get_cos(vec_target_obj[:2], w) for w in next_obj_arm]
-                    action = np.argmax(next_cos_list)
 
         return action
 
