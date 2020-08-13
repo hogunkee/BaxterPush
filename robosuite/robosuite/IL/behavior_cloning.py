@@ -57,10 +57,6 @@ class SimpleCNN():
         self.pkl_list = sorted([os.path.join(data_path, p) for p in pkl_list])
         self.a_list = sorted([p for p in pkl_list if self.task + '_a_' in p])
         self.s_list = sorted([p for p in pkl_list if self.task + '_s_' in p])
-        self.test_actions = self.a_list[-1]
-        self.test_states = self.s_list[-1]
-        self.a_list = self.a_list[:-1]
-        self.s_list = self.s_list[:-1]
         assert len(self.a_list) == len(self.s_list)
         self.data_path = data_path
 
@@ -178,7 +174,7 @@ class SimpleCNN():
 
             epoch_cost = []
             epoch_accur = []
-            for p_idx in np.random.permutation(len(self.a_list)):
+            for p_idx in np.random.permutation(len(self.a_list)-1):
                 pkl_action = self.a_list[p_idx]
                 pkl_state = self.s_list[p_idx]
                 assert pkl_action[-5:] == pkl_state[-5:]
@@ -200,12 +196,20 @@ class SimpleCNN():
                     epoch_accur.append(accuracy)
 
             if (epoch+1) % self.test_freq == 0:
+                pkl_action = self.a_list[-1]
+                pkl_state = self.s_list[-1]
+                assert pkl_action[-5:] == pkl_state[-5:]
+                buff_actions = self.load_pkl(pkl_action)
+                buff_states = self.load_pkl(pkl_state)
+                assert len(buff_actions) == len(buff_states)
+                buff_states = np.clip(buff_states, 0.0, 5.0)
+
                 test_cost = []
                 test_accur = []
                 test_bs = 500
-                for i in range(len(self.test_actions)//test_bs):
-                    batch_actions = self.test_actions[test_bs * i:test_bs * (i + 1)]
-                    batch_states = self.test_states[test_bs * i:test_bs * (i + 1)]
+                for i in range(len(buff_actions)//test_bs):
+                    batch_actions = buff_actions[test_bs * i:test_bs * (i + 1)]
+                    batch_states = buff_states[test_bs * i:test_bs * (i + 1)]
                     _, cost, accuracy = sess.run([self.optimizer, self.cost, self.accuracy], \
                                                    feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
                     test_cost.append(cost)
