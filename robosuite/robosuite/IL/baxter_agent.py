@@ -9,7 +9,7 @@ flags.DEFINE_integer('render', 0, 'render the screens')
 flags.DEFINE_integer('num_episodes', 10000, 'number of episodes')
 flags.DEFINE_integer('use_feature', 0, 'using feature-base states or image-base states.')
 flags.DEFINE_string('task', 'reach', 'name of task: [ reach / push / pick ]')
-flags.DEFINE_string('action_type', '3D', '[ 2D / 3D ]')
+flags.DEFINE_string('action_type', '2D', '[ 2D / 3D ]')
 
 flags.DEFINE_integer('save_data', 1, 'save data or not')
 flags.DEFINE_integer('max_buff', 2000, 'number of steps saved in one data file.')

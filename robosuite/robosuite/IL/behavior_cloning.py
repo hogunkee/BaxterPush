@@ -30,7 +30,8 @@ class SimpleCNN():
         self.batch_size = 128
         self.lr = 1e-3
         self.loss_type = 'l2' # 'l2' or 'ce'
-        self.test_freq = 10
+        self.test_freq = 1
+        self.eval_freq = 10
         self.num_test_ep = 3
         self.env = None
 
@@ -56,6 +57,10 @@ class SimpleCNN():
         self.pkl_list = sorted([os.path.join(data_path, p) for p in pkl_list])
         self.a_list = sorted([p for p in pkl_list if self.task + '_a_' in p])
         self.s_list = sorted([p for p in pkl_list if self.task + '_s_' in p])
+        self.test_actions = self.a_list[-1]
+        self.test_states = self.s_list[-1]
+        self.a_list = self.a_list[:-1]
+        self.s_list = self.s_list[:-1]
         assert len(self.a_list) == len(self.s_list)
         self.data_path = data_path
 
@@ -194,16 +199,30 @@ class SimpleCNN():
                     epoch_cost.append(cost)
                     epoch_accur.append(accuracy)
 
+            if (epoch+1) % self.test_freq == 0:
+                test_cost = []
+                test_accur = []
+                test_bs = 500
+                for i in range(len(self.test_actions)//test_bs):
+                    batch_actions = self.test_actions[test_bs * i:test_bs * (i + 1)]
+                    batch_states = self.test_states[test_bs * i:test_bs * (i + 1)]
+                    _, cost, accuracy = sess.run([self.optimizer, self.cost, self.accuracy], \
+                                                   feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
+                    test_cost.append(cost)
+                    test_accur.append(accuracy)
+                test_accuracy = np.mean(test_accur)
+
+            writer.add_scalar('train-%s/test_accuracy' % self.task, test_accuracy)
             writer.add_scalar('train-%s/mean_cost'%self.task, np.mean(epoch_cost))
             writer.add_scalar('train-%s/mean_accuracy'%self.task, np.mean(epoch_accur))
-            print('[Epoch %d] cost: %.3f\taccur: %.3f' %(epoch, np.mean(epoch_cost), np.mean(epoch_accur)))
+            print('[Epoch %d] cost: %.3f\ttrain accur: %.3f\ttest accur: %.3f' %(epoch, np.mean(epoch_cost), np.mean(epoch_accur), test_accuracy))
 
             # save the model parameters
             if np.mean(epoch_accur) > 0.90 and np.mean(epoch_accur) > self.max_accur:
                 self.saver.save(sess, os.path.join(self.checkpoint_dir, 'model'), global_step=epoch)
                 self.max_accur = np.mean(epoch_accur)
             # performance evaluation
-            if (epoch+1) % self.test_freq == 0:
+            if (epoch+1) % self.eval_freq == 0:
                 self.test_agent(sess)
 
         print('Training done!')

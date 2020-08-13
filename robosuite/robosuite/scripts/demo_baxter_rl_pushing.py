@@ -78,15 +78,15 @@ class BaxterEnv():
 
         self.env.reset()
         if self.random_spawn:
-            init_pos = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05]) #0.1
-            self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05])  # 0.1
+            init_pos = arena_pos + np.array([0.15, 0.15, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05]) #0.1
+            self.goal = arena_pos + np.array([0.15, 0.15, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05])  # 0.1
             spawn_count = 0
-            while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < 0.25:  # <0.08
+            while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < 0.15:  # <0.25
                 spawn_count += 1
-                self.goal = arena_pos + np.array([0.2, 0.2, 0.0]) * \
+                self.goal = arena_pos + np.array([0.15, 0.15, 0.0]) * \
                             np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05])  # 0.025
                 if spawn_count%10 == 0:
-                    init_pos = arena_pos + np.array([0.2, 0.2, 0.0]) * np.random.uniform(low=-1.0, high=1.0,size=3) + np.array([0.0, 0.0, 0.05])
+                    init_pos = arena_pos + np.array([0.15, 0.15, 0.0]) * np.random.uniform(low=-1.0, high=1.0,size=3) + np.array([0.0, 0.0, 0.05])
         else:
             init_pos = arena_pos + np.array([0.15, 0.10, 0.0]) + np.array([0.0, 0.0, 0.05])
             self.goal = arena_pos + np.array([-0.05, -0.15, 0.0]) + np.array([0.0, 0.0, 0.05])  # 0.025
@@ -116,9 +116,6 @@ class BaxterEnv():
         # print(self.goal)
         # print()
 
-        stucked = move_to_pos(self.env, [0.4, 0.6, 1.0], [0.4, -0.6, 1.0], arm='both', level=1.0, render=self.render)
-        stucked = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9], self.state[9:12], arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
-
         self.obj_id = self.env.obj_body_id['CustomObject_0']
         self.init_obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
         self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
@@ -129,7 +126,17 @@ class BaxterEnv():
         self.pre_vec = self.target_pos - self.obj_pos
         self.pre_target_pos = self.target_pos.copy()
 
-        # self.state[6:9] = self.env._r_eef_xpos
+        if self.task == 'push':
+            ## set the robot arm next to the block ##
+            align_direction = self.pre_vec[:2] / np.linalg.norm(self.pre_vec[:2])
+            self.state[6:8] = self.obj_pos[:2] - 1.5 * self.mov_dist * align_direction
+
+        stucked = move_to_pos(self.env, [0.4, 0.6, 1.0], [0.4, -0.6, 1.0], arm='both', level=1.0, render=self.render)
+        stucked = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9] + np.array([0., 0., 0.1]), self.state[9:12],
+                                arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
+        stucked = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9], self.state[9:12],
+                                arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
+
         self.arm_pos = self.env._r_eef_xpos
         self.pre_arm_pos = self.arm_pos.copy()
         self.global_done = False
