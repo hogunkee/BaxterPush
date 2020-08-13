@@ -223,9 +223,9 @@ class SimpleCNN():
 
             # save the model parameters
             # if np.mean(epoch_accur) > 0.90 and np.mean(epoch_accur) > self.max_accur:
-            if np.mean(epoch_accur) > self.max_accur:
+            if np.mean(test_accuracy) > self.max_accur:
                 self.saver.save(sess, os.path.join(self.checkpoint_dir, 'model'), global_step=epoch)
-                self.max_accur = np.mean(epoch_accur)
+                self.max_accur = test_accuracy
             # performance evaluation
             if (epoch+1) % self.eval_freq == 0:
                 self.test_agent(sess)
