@@ -28,7 +28,7 @@ class SimpleCNN():
         self.data_path = None
         self.num_epochs = 100
         self.batch_size = 128
-        self.lr = 1e-3
+        self.lr = 2e-3
         self.loss_type = 'l2' # 'l2' or 'ce'
         self.test_freq = 1
         self.eval_freq = 100
@@ -218,7 +218,7 @@ class SimpleCNN():
                 test_accuracy = np.mean(test_accur)
 
             writer.add_scalar('train-%s/test_accuracy' % self.task, test_accuracy, epoch+1)
-            writer.add_scalar('train-%s/train_cost'%self.task, np.mean(epoch_cost), epoch+!)
+            writer.add_scalar('train-%s/train_cost'%self.task, np.mean(epoch_cost), epoch+1)
             writer.add_scalar('train-%s/train_accuracy'%self.task, np.mean(epoch_accur), epoch+1)
             print('[Epoch %d] cost: %.3f\ttrain accur: %.3f\ttest accur: %.3f' %(epoch, np.mean(epoch_cost), np.mean(epoch_accur), test_accuracy))
 
@@ -240,7 +240,7 @@ def main():
     action_type = '2D' # '2D' / '3D'
 
     render = True
-    eval = True
+    eval = False #True
     screen_width = 192 #264
     screen_height = 192 #64
     crop = 128
