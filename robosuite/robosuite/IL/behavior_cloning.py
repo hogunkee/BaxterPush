@@ -21,8 +21,8 @@ class SimpleCNN():
         self.action_size = action_size
 
         self.cnn_format = cnn_format
-        self.screen_height = 64
-        self.screen_width = 64
+        self.screen_height = 128 #64
+        self.screen_width = 128 #64
         self.screen_channel = 4
 
         self.data_path = None
@@ -30,8 +30,8 @@ class SimpleCNN():
         self.batch_size = 128
         self.lr = 1e-3
         self.loss_type = 'l2' # 'l2' or 'ce'
-        self.test_freq = 20
-        self.num_test_ep = 1
+        self.test_freq = 10
+        self.num_test_ep = 3
         self.env = None
 
         self.dueling = False
