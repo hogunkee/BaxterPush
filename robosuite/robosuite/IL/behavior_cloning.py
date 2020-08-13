@@ -218,7 +218,8 @@ class SimpleCNN():
             print('[Epoch %d] cost: %.3f\ttrain accur: %.3f\ttest accur: %.3f' %(epoch, np.mean(epoch_cost), np.mean(epoch_accur), test_accuracy))
 
             # save the model parameters
-            if np.mean(epoch_accur) > 0.90 and np.mean(epoch_accur) > self.max_accur:
+            # if np.mean(epoch_accur) > 0.90 and np.mean(epoch_accur) > self.max_accur:
+            if np.mean(epoch_accur) > self.max_accur:
                 self.saver.save(sess, os.path.join(self.checkpoint_dir, 'model'), global_step=epoch)
                 self.max_accur = np.mean(epoch_accur)
             # performance evaluation

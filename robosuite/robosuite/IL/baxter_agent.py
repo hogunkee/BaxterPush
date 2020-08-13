@@ -221,7 +221,8 @@ class BCAgent():
         self.model.load_model(self.sess)
 
     def get_action(self, obs):
-        action = self.sess.run(self.model.q_action, feed_dict={self.model.s_t: [obs]})
+        clipped_obs = np.clip(obs, 0.0, 5.0)
+        action = self.sess.run(self.model.q_action, feed_dict={self.model.s_t: [clipped_obs]})
         return action
 
 
