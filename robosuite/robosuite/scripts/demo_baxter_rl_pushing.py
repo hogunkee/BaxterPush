@@ -17,7 +17,7 @@ INIT_ARM_POS = [0.40933302, -1.24377906, 0.68787495, 2.03907987, -0.27229507, 0.
 from gym import spaces
 
 class BaxterEnv():
-    def __init__(self, env, task='push', continuous=False, render=True, using_feature=False, random_spawn=True, rgbd=False, print_on=False, action_type='3D'):
+    def __init__(self, env, task='push', continuous=False, render=True, using_feature=False, random_spawn=False, rgbd=False, print_on=False, action_type='3D'):
         self.env = env
         self.task = task # 'reach', 'push' or 'pick'
         self.is_continuous = continuous
@@ -51,7 +51,7 @@ class BaxterEnv():
             self.action_space = spaces.Discrete(action_size)
             self.action_size = action_size
 
-        self.mov_dist = 0.04  # 0.03
+        self.mov_dist = 0.04 # 0.03
         self.state = None
         self.grasp = None
         self.init_obj_pos = None
@@ -83,19 +83,18 @@ class BaxterEnv():
             threshold = 0.20
 
         self.env.reset()
-        if self.random_spawn:
-            init_pos = arena_pos + np.array([spawn_range, spawn_range, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05]) #0.1
-            self.goal = arena_pos + np.array([spawn_range, spawn_range, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05])  # 0.1
-            spawn_count = 0
-            while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < threshold:  # <0.15
-                spawn_count += 1
-                self.goal = arena_pos + np.array([spawn_range, spawn_range, 0.0]) * \
-                            np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05])  # 0.025
-                if spawn_count%10 == 0:
-                    init_pos = arena_pos + np.array([spawn_range, spawn_range, 0.0]) * np.random.uniform(low=-1.0, high=1.0,size=3) + np.array([0.0, 0.0, 0.05])
-        else:
-            init_pos = arena_pos + np.array([0.15, 0.10, 0.0]) + np.array([0.0, 0.0, 0.05])
-            self.goal = arena_pos + np.array([-0.05, -0.15, 0.0]) + np.array([0.0, 0.0, 0.05])  # 0.025
+        init_pos = arena_pos + np.array([spawn_range, spawn_range, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05]) #0.1
+        self.goal = arena_pos + np.array([spawn_range, spawn_range, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05])  # 0.1
+        spawn_count = 0
+        while np.linalg.norm(self.goal[0:2] - init_pos[0:2]) < threshold:  # <0.15
+            spawn_count += 1
+            self.goal = arena_pos + np.array([spawn_range, spawn_range, 0.0]) * \
+                        np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05])  # 0.025
+            if spawn_count%10 == 0:
+                init_pos = arena_pos + np.array([spawn_range, spawn_range, 0.0]) * np.random.uniform(low=-1.0, high=1.0,size=3) + np.array([0.0, 0.0, 0.05])
+        ## spawn at fixed position ##
+        # init_pos = arena_pos + np.array([0.15, 0.10, 0.0]) + np.array([0.0, 0.0, 0.05])
+        # self.goal = arena_pos + np.array([-0.05, -0.15, 0.0]) + np.array([0.0, 0.0, 0.05])  # 0.025
 
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(random_quat()))
@@ -103,17 +102,23 @@ class BaxterEnv():
         if self.action_type=='2D':
             arena_pos +  + np.array([0.0, 0.0, 0.05])
             if self.task=='reach':
-                # self.state[6:9] = arena_pos + np.random.uniform(low=-1.0, high=1.0, size=3) * np.array([spawn_range, spawn_range, 0.0]) \
-                #                   + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.08])
-                self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085]) # 0.085
+                if self.random_spawn:
+                    self.state[6:9] = arena_pos + np.random.uniform(low=-1.0, high=1.0, size=3) * np.array([spawn_range, spawn_range, 0.0]) \
+                                      + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.08])
+                else:
+                    self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085]) # 0.085
             elif self.task=='push':
                 self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.075])
+
         elif self.action_type=='3D':
             if self.task=='reach':
-                self.state[6:9] = arena_pos + np.random.uniform(low=-1.0, high=1.0, size=3) * np.array([spawn_range, spawn_range, 0.0])\
-                                  + np.array([0.0, 0.0, 0.16])  # 0.16
+                if self.random_spawn:
+                    self.state[6:9] = arena_pos + np.random.uniform(low=-1.0, high=1.0, size=3) * np.array([spawn_range, spawn_range, 0.0])\
+                                      + np.array([0.0, 0.0, 0.16])  # 0.16
+                else:
+                    self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16])
             elif self.task=='push':
-                self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16])  # 0.16
+                self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16])
 
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(random_quat()))
@@ -145,7 +150,7 @@ class BaxterEnv():
         if self.task == 'push':
             ## set the robot arm next to the block ##
             align_direction = self.pre_vec[:2] / np.linalg.norm(self.pre_vec[:2])
-            self.state[6:8] = self.obj_pos[:2] - 2.0 * self.mov_dist * align_direction
+            self.state[6:8] = self.obj_pos[:2] - 0.08 * align_direction
 
         stucked = move_to_pos(self.env, [0.4, 0.6, 1.0], [0.4, -0.6, 1.0], arm='both', level=1.0, render=self.render)
         if self.task == 'push':
@@ -203,6 +208,7 @@ class BaxterEnv():
             # up / down
             # gripper close / open
             action = np.squeeze(action) #action[0][0]
+            assert action < self.action_size
             mov_dist = self.mov_dist
 
             self.pre_arm_pos = self.arm_pos.copy()
@@ -422,8 +428,9 @@ class BaxterEnv():
 
 
 def check_stucked(arm_euler):
-    check1 = arm_euler[0] % np.pi < 0.01 or np.pi - arm_euler[0] % np.pi < 0.01
-    check2 = arm_euler[1] % np.pi < 0.01 or np.pi - arm_euler[1] % np.pi < 0.01
+    print(np.array(arm_euler) / np.pi)
+    check1 = arm_euler[0] % np.pi < 0.02 or np.pi - arm_euler[0] % np.pi < 0.02
+    check2 = arm_euler[1] % np.pi < 0.02 or np.pi - arm_euler[1] % np.pi < 0.02
     return not (check1 and check2)
 
 def random_quat():

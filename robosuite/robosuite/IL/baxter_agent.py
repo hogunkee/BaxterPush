@@ -6,13 +6,14 @@ import tensorflow as tf
 
 flags = tf.app.flags
 flags.DEFINE_integer('render', 0, 'render the screens')
-flags.DEFINE_integer('num_episodes', 10000, 'number of episodes')
+flags.DEFINE_integer('num_episodes', 100000, 'number of episodes')
 flags.DEFINE_integer('use_feature', 0, 'using feature-base states or image-base states.')
 flags.DEFINE_string('task', 'reach', 'name of task: [ reach / push / pick ]')
 flags.DEFINE_string('action_type', '2D', '[ 2D / 3D ]')
+flags.DEFINE_integer('random_spawn', 0, 'robot arm random pos or not (only for REACH task)')
 
 flags.DEFINE_integer('save_data', 1, 'save data or not')
-flags.DEFINE_integer('max_buff', 2000, 'number of steps saved in one data file.')
+flags.DEFINE_integer('max_buff', 500, 'number of steps saved in one data file.')
 
 flags.DEFINE_string('model_type', 'greedy', 'greedy / bc')
 flags.DEFINE_string('model_name', 'reach_0811_191540', 'name of the trained BC model')
@@ -29,6 +30,7 @@ save_data = bool(FLAGS.save_data)
 print_on = False
 task = FLAGS.task
 action_type = FLAGS.action_type
+random_spawn = bool(FLAGS.random_spawn)
 
 if FLAGS.model_type=='bc':
     render = True
@@ -66,7 +68,7 @@ def main():
         crop=crop
     )
     env = IKWrapper(env)
-    env = BaxterEnv(env, task=task, render=render, using_feature=using_feature, rgbd=True, action_type=action_type)
+    env = BaxterEnv(env, task=task, render=render, using_feature=using_feature, random_spawn=random_spawn, rgbd=True, action_type=action_type)
 
     if FLAGS.model_type=='greedy':
         agent = GreedyAgent(env)
@@ -95,7 +97,7 @@ def main():
             step_count += 1
             action = agent.get_action(obs)
             new_obs, reward, done, _ = env.step(action)
-            total_steps += 1
+            # total_steps += 1
             if print_on:
                 print('action: %d / reward: %.2f'%(action, reward))
             # print(step_count, 'steps \t action: ', action, '\t reward: ', reward)
@@ -110,6 +112,7 @@ def main():
         if success:
             buff_states += ep_buff_states
             buff_actions += ep_buff_actions
+            total_steps += len(ep_buff_states)
 
             # recording the trajectories
             if save_data:
@@ -123,26 +126,32 @@ def main():
                         pickle.dump(np.array(buff_states)[:FLAGS.max_buff], f)
                     with open(os.path.join(save_name, task + '_a_%d.pkl'%save_num), 'wb') as f:
                         pickle.dump(np.array(buff_actions)[:FLAGS.max_buff], f)
+
+                    print('---' * 10)
                     print(save_num, '-th file saved.')
+                    print('action distribution:')
+                    for a in range(max(env.action_size, max(buff_actions)+1)):
+                        print('%d: %.2f'%(a, list(buff_actions).count(a)/len(buff_actions)))
+                    print('---' * 10)
+
                     buff_states = buff_states[FLAGS.max_buff:]
                     buff_actions = buff_actions[FLAGS.max_buff:]
                     # buff_states, buff_actions = [], []
 
-        if print_on:
-            print('success rate?:', np.mean(success_log), success_log)
+        print('success rate?:', np.mean(success_log), success_log[-10:])
         print('Episode %d ends.'%(n+1), '( Total steps:', total_steps, ')')
         print('Ep len:', step_count, 'steps.   Ep reward:', cumulative_reward)
         print()
 
 
 class GreedyAgent():
-    def __init__(self, env, action_type='2D'):
+    def __init__(self, env):
         self.env = env
         self.task = self.env.task
         # self.using_feature = self.env.using_feature
         self.mov_dist = self.env.mov_dist
         self.action_size = self.env.action_size
-        self.action_type = action_type
+        self.action_type = self.env.action_type
 
     def get_action(self, obs):
         mov_dist = self.mov_dist

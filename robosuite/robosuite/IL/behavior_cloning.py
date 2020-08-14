@@ -238,6 +238,7 @@ class SimpleCNN():
 def main():
     task = 'reach' # 'reach' / 'push'
     action_type = '2D' # '2D' / '3D'
+    random_spawn = False # robot arm fixed init_pos while training BC Reach model
 
     render = True
     eval = True
@@ -266,7 +267,7 @@ def main():
             crop=crop
         )
         env = IKWrapper(env)
-        env = BaxterEnv(env, task=task, render=render, using_feature=False, rgbd=rgbd, action_type=action_type)
+        env = BaxterEnv(env, task=task, render=render, using_feature=False, random_spawn=random_spawn, rgbd=rgbd, action_type=action_type)
         action_size = env.action_size
 
     if env is None:
