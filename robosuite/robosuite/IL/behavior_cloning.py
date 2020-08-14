@@ -31,7 +31,7 @@ class SimpleCNN():
         self.lr = 2e-3
         self.loss_type = 'l2' # 'l2' or 'ce'
         self.test_freq = 1
-        self.eval_freq = 100
+        self.eval_freq = 5
         self.num_test_ep = 3
         self.env = None
 
@@ -240,7 +240,7 @@ def main():
     action_type = '2D' # '2D' / '3D'
 
     render = True
-    eval = False #True
+    eval = True
     screen_width = 192 #264
     screen_height = 192 #64
     crop = 128
@@ -267,7 +267,7 @@ def main():
         )
         env = IKWrapper(env)
         env = BaxterEnv(env, task=task, render=render, using_feature=False, rgbd=rgbd, action_type=action_type)
-        action_size = env.actoin_size
+        action_size = env.action_size
 
     if env is None:
         action_size = 8 if action_type=='2D' else 10
