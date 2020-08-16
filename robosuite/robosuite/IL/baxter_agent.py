@@ -46,6 +46,7 @@ crop = 128
 
 # Path which data will be saved in.
 save_name = os.path.join(FILE_PATH, 'data')
+# save_name = '/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/push_data'
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # GPU is not efficient here
 
