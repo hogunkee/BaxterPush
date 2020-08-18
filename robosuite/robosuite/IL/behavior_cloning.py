@@ -27,12 +27,12 @@ class SimpleCNN():
 
         self.data_path = None
         self.num_epochs = 100
-        self.batch_size = 128
-        self.lr = 2e-3
+        self.batch_size = 500 #128
+        self.lr = 2e-4
         self.loss_type = 'l2' # 'l2' or 'ce'
         self.test_freq = 1
-        self.eval_freq = 5
-        self.num_test_ep = 3
+        self.eval_freq = 1
+        self.num_test_ep = 10
         self.env = None
 
         self.dueling = False
@@ -154,7 +154,7 @@ class SimpleCNN():
 
         print(success_log)
         print('success rate?:', np.mean(success_log))
-        return
+        return np.mean(success_log)
 
     def set_env(self, env):
         self.env = env
@@ -175,7 +175,7 @@ class SimpleCNN():
 
             epoch_cost = []
             epoch_accur = []
-            for p_idx in np.random.permutation(len(self.a_list)-1):
+            for p_idx in np.random.permutation(len(self.a_list)-2): # -1
                 pkl_action = self.a_list[p_idx]
                 pkl_state = self.s_list[p_idx]
                 assert pkl_action[-5:] == pkl_state[-5:]
@@ -197,6 +197,19 @@ class SimpleCNN():
                     epoch_accur.append(accuracy)
 
             if (epoch+1) % self.test_freq == 0:
+                pkl_action = self.a_list[-2]
+                pkl_state = self.s_list[-2]
+                assert pkl_action[-5:] == pkl_state[-5:]
+                buff_actions = self.load_pkl(pkl_action)
+                buff_states = self.load_pkl(pkl_state)
+                assert len(buff_actions) == len(buff_states)
+                buff_states = np.clip(buff_states, 0.0, 5.0)
+
+                _, test_cost, test_accur = sess.run([self.optimizer, self.cost, self.accuracy], \
+                                        feed_dict={self.s_t: buff_states, self.a_true: buff_actions})
+                test_accuracy_fix = np.mean(test_accur)
+                test_accuracy = test_accuracy_fix
+
                 pkl_action = self.a_list[-1]
                 pkl_state = self.s_list[-1]
                 assert pkl_action[-5:] == pkl_state[-5:]
@@ -205,22 +218,16 @@ class SimpleCNN():
                 assert len(buff_actions) == len(buff_states)
                 buff_states = np.clip(buff_states, 0.0, 5.0)
 
-                test_cost = []
-                test_accur = []
-                test_bs = 500
-                for i in range(len(buff_actions)//test_bs):
-                    batch_actions = buff_actions[test_bs * i:test_bs * (i + 1)]
-                    batch_states = buff_states[test_bs * i:test_bs * (i + 1)]
-                    _, cost, accuracy = sess.run([self.optimizer, self.cost, self.accuracy], \
-                                                   feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
-                    test_cost.append(cost)
-                    test_accur.append(accuracy)
-                test_accuracy = np.mean(test_accur)
+                _, test_cost, test_accur = sess.run([self.optimizer, self.cost, self.accuracy], \
+                                        feed_dict={self.s_t: buff_states, self.a_true: buff_actions})
+                test_accuracy_ran = np.mean(test_accur)
 
-            writer.add_scalar('train-%s/test_accuracy' % self.task, test_accuracy, epoch+1)
+            writer.add_scalar('train-%s/test_accuracy_fix' % self.task, test_accuracy_fix, epoch+1)
+            writer.add_scalar('train-%s/test_accuracy_ran' % self.task, test_accuracy_ran, epoch + 1)
             writer.add_scalar('train-%s/train_cost'%self.task, np.mean(epoch_cost), epoch+1)
             writer.add_scalar('train-%s/train_accuracy'%self.task, np.mean(epoch_accur), epoch+1)
-            print('[Epoch %d] cost: %.3f\ttrain accur: %.3f\ttest accur: %.3f' %(epoch, np.mean(epoch_cost), np.mean(epoch_accur), test_accuracy))
+            print('[Epoch %d]' %epoch)
+            print('cost: %.3f\ttrain accur: %.3f\ttest accur: fix-[%.3f] / ran-[%.3f]' %(np.mean(epoch_cost), np.mean(epoch_accur), test_accuracy_fix, test_accuracy_ran))
 
             # save the model parameters
             # if np.mean(epoch_accur) > 0.90 and np.mean(epoch_accur) > self.max_accur:
@@ -229,7 +236,8 @@ class SimpleCNN():
                 self.max_accur = test_accuracy
             # performance evaluation
             if (epoch+1) % self.eval_freq == 0:
-                self.test_agent(sess)
+                success_rate = self.test_agent(sess)
+                writer.add_scalar('train-%s/success_rate' % self.task, success_rate, epoch + 1)
 
         print('Training done!')
         return
@@ -240,7 +248,7 @@ def main():
     action_type = '2D' # '2D' / '3D'
     random_spawn = False # robot arm fixed init_pos while training BC Reach model
 
-    render = True
+    render = False #True
     eval = True
     screen_width = 192 #264
     screen_height = 192 #64
@@ -273,7 +281,7 @@ def main():
     if env is None:
         action_size = 8 if action_type=='2D' else 10
 
-    data_path = 'data' # '/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
+    data_path = 'data/processed_data' # '/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
     model = SimpleCNN(task=task, action_size=action_size)
     model.set_datapath(data_path)
     model.set_env(env)
