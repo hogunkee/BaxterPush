@@ -27,12 +27,12 @@ class SimpleCNN():
 
         self.data_path = None
         self.num_epochs = 100
-        self.batch_size = 20 #500 #128
-        self.lr = 2e-4
+        self.batch_size = 500 #128
+        self.lr = 5e-4
         self.loss_type = 'l2' # 'l2' or 'ce'
         self.test_freq = 1
-        self.eval_freq = 1
-        self.num_test_ep = 10
+        self.eval_freq = 4
+        self.num_test_ep = 5
         self.env = None
 
         self.dueling = False
@@ -65,7 +65,7 @@ class SimpleCNN():
         self.t_w = {}
 
         #initializer = tf.contrib.layers.xavier_initializer()
-        initializer = tf.truncated_normal_initializer(0, 0.1) #0.02)
+        initializer = tf.truncated_normal_initializer(0, 0.02) #0.1)
         activation_fn = tf.nn.relu
 
         # training network
@@ -160,6 +160,7 @@ class SimpleCNN():
         self.env = env
 
     def train(self, sess):
+        test_bs  = 500
         writer = SummaryWriter(os.path.join(FILE_PATH, 'bc_train_log/', 'tensorboard', self.task + '_' + self.now.strftime("%m%d_%H%M%S")))
         sess.run(tf.global_variables_initializer())
 
@@ -175,12 +176,15 @@ class SimpleCNN():
 
             epoch_cost = []
             epoch_accur = []
+            pkl_count = 0
             for p_idx in np.random.permutation(len(self.a_list)-2): # -1
+                pkl_count += 1
+                print(pkl_count, end='')
                 pkl_action = self.a_list[p_idx]
                 pkl_state = self.s_list[p_idx]
                 assert pkl_action[-5:] == pkl_state[-5:]
-                buff_actions = self.load_pkl(pkl_action) #[1:]
-                buff_states = self.load_pkl(pkl_state) #[:-1]
+                buff_actions = self.load_pkl(pkl_action)
+                buff_states = self.load_pkl(pkl_state)
                 assert len(buff_actions) == len(buff_states)
 
                 shuffler = np.random.permutation(len(buff_actions))
@@ -197,6 +201,7 @@ class SimpleCNN():
                     epoch_accur.append(accuracy)
 
             if (epoch+1) % self.test_freq == 0:
+                # 1. Test for fixed arm pos scenario
                 pkl_action = self.a_list[-2]
                 pkl_state = self.s_list[-2]
                 assert pkl_action[-5:] == pkl_state[-5:]
@@ -205,11 +210,17 @@ class SimpleCNN():
                 assert len(buff_actions) == len(buff_states)
                 buff_states = np.clip(buff_states, 0.0, 5.0)
 
-                _, test_cost, test_accur = sess.run([self.optimizer, self.cost, self.accuracy], \
-                                        feed_dict={self.s_t: buff_states, self.a_true: buff_actions})
-                test_accuracy_fix = np.mean(test_accur)
+                accur_list = []
+                for i in range(len(buff_actions)//test_bs):
+                    batch_actions = buff_actions[test_bs * i:test_bs * (i + 1)]
+                    batch_states = buff_states[test_bs * i:test_bs * (i + 1)]
+                    _, test_accur = sess.run([self.optimizer, self.accuracy], \
+                                            feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
+                    accur_list.append(test_accur)
+                test_accuracy_fix = np.mean(accur_list)
                 test_accuracy = test_accuracy_fix
 
+                # 2. Test for random arm pos scenario
                 pkl_action = self.a_list[-1]
                 pkl_state = self.s_list[-1]
                 assert pkl_action[-5:] == pkl_state[-5:]
@@ -218,16 +229,23 @@ class SimpleCNN():
                 assert len(buff_actions) == len(buff_states)
                 buff_states = np.clip(buff_states, 0.0, 5.0)
 
-                _, test_cost, test_accur = sess.run([self.optimizer, self.cost, self.accuracy], \
-                                        feed_dict={self.s_t: buff_states, self.a_true: buff_actions})
-                test_accuracy_ran = np.mean(test_accur)
+                accur_list = []
+                for i in range(len(buff_actions) // test_bs):
+                    batch_actions = buff_actions[test_bs * i:test_bs * (i + 1)]
+                    batch_states = buff_states[test_bs * i:test_bs * (i + 1)]
+                    _, test_accur = sess.run([self.optimizer, self.accuracy], \
+                                             feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
+                    accur_list.append(test_accur)
+                test_accuracy_ran = np.mean(accur_list)
 
             writer.add_scalar('train-%s/test_accuracy_fix' % self.task, test_accuracy_fix, epoch+1)
             writer.add_scalar('train-%s/test_accuracy_ran' % self.task, test_accuracy_ran, epoch + 1)
             writer.add_scalar('train-%s/train_cost'%self.task, np.mean(epoch_cost), epoch+1)
             writer.add_scalar('train-%s/train_accuracy'%self.task, np.mean(epoch_accur), epoch+1)
+            print()
             print('[Epoch %d]' %epoch)
-            print('cost: %.3f\ttrain accur: %.3f\ttest accur: fix-[%.3f] / ran-[%.3f]' %(np.mean(epoch_cost), np.mean(epoch_accur), test_accuracy_fix, test_accuracy_ran))
+            print('cost: %.3f\t/   train accur: %.3f\t/   test accur - fix:[%.3f] , ran:[%.3f]' \
+                  %(np.mean(epoch_cost), np.mean(epoch_accur), test_accuracy_fix, test_accuracy_ran))
 
             # save the model parameters
             # if np.mean(epoch_accur) > 0.90 and np.mean(epoch_accur) > self.max_accur:
@@ -248,7 +266,7 @@ def main():
     action_type = '2D' # '2D' / '3D'
     random_spawn = False # robot arm fixed init_pos while training BC Reach model
 
-    render = False #True
+    render = True
     eval = True
     screen_width = 192 #264
     screen_height = 192 #64
@@ -281,7 +299,7 @@ def main():
     if env is None:
         action_size = 8 if action_type=='2D' else 10
 
-    data_path = 'data' # '/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
+    data_path = 'data/processed_data' # '/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
     model = SimpleCNN(task=task, action_size=action_size)
     model.set_datapath(data_path)
     model.set_env(env)
