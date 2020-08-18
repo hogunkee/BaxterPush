@@ -27,7 +27,7 @@ class SimpleCNN():
 
         self.data_path = None
         self.num_epochs = 100
-        self.batch_size = 500 #128
+        self.batch_size = 20 #500 #128
         self.lr = 2e-4
         self.loss_type = 'l2' # 'l2' or 'ce'
         self.test_freq = 1
@@ -146,7 +146,7 @@ class SimpleCNN():
                 # print(step_count, 'steps \t action: ', action, '\t reward: ', reward)
                 cumulative_reward += reward
 
-            if reward >= 100:
+            if cumulative_reward >= 90:
                 success_log.append(1)
             else:
                 success_log.append(0)
@@ -281,7 +281,7 @@ def main():
     if env is None:
         action_size = 8 if action_type=='2D' else 10
 
-    data_path = 'data/processed_data' # '/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
+    data_path = 'data' # '/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
     model = SimpleCNN(task=task, action_size=action_size)
     model.set_datapath(data_path)
     model.set_env(env)

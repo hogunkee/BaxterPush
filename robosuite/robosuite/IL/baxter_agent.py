@@ -77,7 +77,7 @@ def main():
         trained_model = SimpleCNN(task, env.action_size, model_name=FLAGS.model_name)
         agent = BCAgent(trained_model)
 
-    if not os.path.exists(save_name):
+    if not os.path.exists(save_name) and save_data:
         os.makedirs(save_name)
 
     total_steps = 0
@@ -110,34 +110,34 @@ def main():
 
         success = (cumulative_reward >= 90)
         success_log.append(int(success))
-        if success:
+
+        # recording the trajectories
+        if success and save_data:
             buff_states += ep_buff_states
             buff_actions += ep_buff_actions
             total_steps += len(ep_buff_states)
 
-            # recording the trajectories
-            if save_data:
-                if not os.path.isdir(save_name):
-                    os.makedirs(save_name)
-                if len(buff_states) >= FLAGS.max_buff:
-                    f_list = os.listdir(save_name)
-                    num_pickles = len([f for f in f_list if task in f])
-                    save_num = num_pickles // 2
-                    with open(os.path.join(save_name, task + '_s_%d.pkl'%save_num), 'wb') as f:
-                        pickle.dump(np.array(buff_states)[:FLAGS.max_buff], f)
-                    with open(os.path.join(save_name, task + '_a_%d.pkl'%save_num), 'wb') as f:
-                        pickle.dump(np.array(buff_actions)[:FLAGS.max_buff], f)
+            if not os.path.isdir(save_name):
+                os.makedirs(save_name)
+            if len(buff_states) >= FLAGS.max_buff:
+                f_list = os.listdir(save_name)
+                num_pickles = len([f for f in f_list if task in f])
+                save_num = num_pickles // 2
+                with open(os.path.join(save_name, task + '_s_%d.pkl'%save_num), 'wb') as f:
+                    pickle.dump(np.array(buff_states)[:FLAGS.max_buff], f)
+                with open(os.path.join(save_name, task + '_a_%d.pkl'%save_num), 'wb') as f:
+                    pickle.dump(np.array(buff_actions)[:FLAGS.max_buff], f)
 
-                    print('---' * 10)
-                    print(save_num, '-th file saved.')
-                    print('action distribution:')
-                    for a in range(max(env.action_size, max(buff_actions)+1)):
-                        print('%d: %.2f'%(a, list(buff_actions).count(a)/len(buff_actions)))
-                    print('---' * 10)
+                print('---' * 10)
+                print(save_num, '-th file saved.')
+                print('action distribution:')
+                for a in range(max(env.action_size, max(buff_actions)+1)):
+                    print('%d: %.2f'%(a, list(buff_actions).count(a)/len(buff_actions)))
+                print('---' * 10)
 
-                    buff_states = buff_states[FLAGS.max_buff:]
-                    buff_actions = buff_actions[FLAGS.max_buff:]
-                    # buff_states, buff_actions = [], []
+                buff_states = buff_states[FLAGS.max_buff:]
+                buff_actions = buff_actions[FLAGS.max_buff:]
+                # buff_states, buff_actions = [], []
 
         print('success rate?:', np.mean(success_log), success_log[-10:])
         print('Episode %d ends.'%(n+1), '( Total steps:', total_steps, ')')
