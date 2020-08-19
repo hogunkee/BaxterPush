@@ -3,6 +3,7 @@ import numpy as np
 import os
 import sys
 import pickle
+import time
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(FILE_PATH, '../..'))
@@ -28,10 +29,10 @@ class SimpleCNN():
         self.data_path = None
         self.num_epochs = 100
         self.batch_size = 500 #128
-        self.lr = 5e-4
+        self.lr = 5e-3
         self.loss_type = 'l2' # 'l2' or 'ce'
         self.test_freq = 1
-        self.eval_freq = 4
+        self.eval_freq = 3
         self.num_test_ep = 5
         self.env = None
 
@@ -47,16 +48,16 @@ class SimpleCNN():
         self.saver = tf.train.Saver(max_to_keep=20)
         self.max_accur = 0.0
 
-
-    def set_datapath(self, data_path):
+    def set_datapath(self, data_path, data_type='pkl'): # data_type='npy' / 'pkl'
+        self.data_type = data_type
         file_list = os.listdir(data_path)
-        pkl_list = [f for f in file_list if 'pkl' in f and self.task in f]
-        if len(pkl_list)==0:
-            print('No pickle files exist. Wrong data path!!')
+        data_list = [f for f in file_list if data_type in f and self.task in f]
+        if len(data_list)==0:
+            print('No data files exist. Wrong data path!!')
             return
-        self.pkl_list = sorted([os.path.join(data_path, p) for p in pkl_list])
-        self.a_list = sorted([p for p in pkl_list if self.task + '_a_' in p])
-        self.s_list = sorted([p for p in pkl_list if self.task + '_s_' in p])
+        self.data_list = sorted([os.path.join(data_path, p) for p in data_list])
+        self.a_list = sorted([p for p in data_list if self.task + '_a_' in p])
+        self.s_list = sorted([p for p in data_list if self.task + '_s_' in p])
         assert len(self.a_list) == len(self.s_list)
         self.data_path = data_path
 
@@ -65,7 +66,7 @@ class SimpleCNN():
         self.t_w = {}
 
         #initializer = tf.contrib.layers.xavier_initializer()
-        initializer = tf.truncated_normal_initializer(0, 0.02) #0.1)
+        initializer = tf.truncated_normal_initializer(0, 0.1) #0.1)
         activation_fn = tf.nn.relu
 
         # training network
@@ -114,6 +115,9 @@ class SimpleCNN():
         with open(os.path.join(self.data_path, pkl_file), 'rb') as f:
             return pickle.load(f)
 
+    def load_npy(self, npy_file):
+        return np.load(os.path.join(self.data_path, npy_file))
+
     def load_model(self, sess):
         print(" [*] Loading checkpoints...")
         ckpt = tf.train.get_checkpoint_state(self.checkpoint_dir)
@@ -160,6 +164,10 @@ class SimpleCNN():
         self.env = env
 
     def train(self, sess):
+        if self.data_type=='pkl':
+            load_data = self.load_pkl
+        elif self.data_type=='npy':
+            load_data = self.load_npy
         test_bs  = 500
         writer = SummaryWriter(os.path.join(FILE_PATH, 'bc_train_log/', 'tensorboard', self.task + '_' + self.now.strftime("%m%d_%H%M%S")))
         sess.run(tf.global_variables_initializer())
@@ -176,20 +184,22 @@ class SimpleCNN():
 
             epoch_cost = []
             epoch_accur = []
-            pkl_count = 0
+            data_count = 0
+            pt = time.time()
             for p_idx in np.random.permutation(len(self.a_list)-2): # -1
-                pkl_count += 1
-                print(pkl_count, end='')
+                data_count += 1
+                print(data_count, time.time() - pt) #, end='')
+                pt = time.time()
                 pkl_action = self.a_list[p_idx]
                 pkl_state = self.s_list[p_idx]
                 assert pkl_action[-5:] == pkl_state[-5:]
-                buff_actions = self.load_pkl(pkl_action)
-                buff_states = self.load_pkl(pkl_state)
+                buff_actions = load_data(pkl_action)
+                buff_states = load_data(pkl_state)
                 assert len(buff_actions) == len(buff_states)
 
-                shuffler = np.random.permutation(len(buff_actions))
-                buff_actions = buff_actions[shuffler]
-                buff_states = buff_states[shuffler]
+                # shuffler = np.random.permutation(len(buff_actions))
+                # buff_actions = buff_actions[shuffler]
+                # buff_states = buff_states[shuffler]
                 buff_states = np.clip(buff_states, 0.0, 5.0)
 
                 for i in range(len(buff_actions)//bs):
@@ -205,8 +215,8 @@ class SimpleCNN():
                 pkl_action = self.a_list[-2]
                 pkl_state = self.s_list[-2]
                 assert pkl_action[-5:] == pkl_state[-5:]
-                buff_actions = self.load_pkl(pkl_action)
-                buff_states = self.load_pkl(pkl_state)
+                buff_actions = load_data(pkl_action)
+                buff_states = load_data(pkl_state)
                 assert len(buff_actions) == len(buff_states)
                 buff_states = np.clip(buff_states, 0.0, 5.0)
 
@@ -224,8 +234,8 @@ class SimpleCNN():
                 pkl_action = self.a_list[-1]
                 pkl_state = self.s_list[-1]
                 assert pkl_action[-5:] == pkl_state[-5:]
-                buff_actions = self.load_pkl(pkl_action)
-                buff_states = self.load_pkl(pkl_state)
+                buff_actions = load_data(pkl_action)
+                buff_states = load_data(pkl_state)
                 assert len(buff_actions) == len(buff_states)
                 buff_states = np.clip(buff_states, 0.0, 5.0)
 
@@ -299,9 +309,9 @@ def main():
     if env is None:
         action_size = 8 if action_type=='2D' else 10
 
-    data_path = 'data/processed_data' # '/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
+    data_path = 'data/npy_data' # '/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
     model = SimpleCNN(task=task, action_size=action_size)
-    model.set_datapath(data_path)
+    model.set_datapath(data_path, data_type='npy')
     model.set_env(env)
 
     gpu_config = tf.ConfigProto()
