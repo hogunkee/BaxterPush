@@ -28,11 +28,11 @@ class SimpleCNN():
 
         self.data_path = None
         self.num_epochs = 100
-        self.batch_size = 500 #128
-        self.lr = 5e-3
+        self.batch_size = 250 #128
+        self.lr = 1e-3
         self.loss_type = 'l2' # 'l2' or 'ce'
         self.test_freq = 1
-        self.eval_freq = 3
+        self.eval_freq = 5
         self.num_test_ep = 5
         self.env = None
 
@@ -91,7 +91,6 @@ class SimpleCNN():
                 256, [3, 3], [2, 2], initializer, activation_fn, self.cnn_format, padding='SAME', name='l4')
 
             self.l4_pool = tf.reduce_mean(self.l4, [1, 2])
-
 
             self.l5, self.w['l5_w'], self.w['l5_b'] = linear(self.l4_pool, 128, activation_fn=activation_fn, name='l5')
             self.l6, self.w['l6_w'], self.w['l6_b'] = linear(self.l5, 128, activation_fn=activation_fn, name='l6')
@@ -184,12 +183,7 @@ class SimpleCNN():
 
             epoch_cost = []
             epoch_accur = []
-            data_count = 0
-            pt = time.time()
             for p_idx in np.random.permutation(len(self.a_list)-2): # -1
-                data_count += 1
-                print(data_count, time.time() - pt) #, end='')
-                pt = time.time()
                 pkl_action = self.a_list[p_idx]
                 pkl_state = self.s_list[p_idx]
                 assert pkl_action[-5:] == pkl_state[-5:]
@@ -224,7 +218,7 @@ class SimpleCNN():
                 for i in range(len(buff_actions)//test_bs):
                     batch_actions = buff_actions[test_bs * i:test_bs * (i + 1)]
                     batch_states = buff_states[test_bs * i:test_bs * (i + 1)]
-                    _, test_accur = sess.run([self.optimizer, self.accuracy], \
+                    test_accur = sess.run(self.accuracy, \
                                             feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
                     accur_list.append(test_accur)
                 test_accuracy_fix = np.mean(accur_list)
@@ -243,7 +237,7 @@ class SimpleCNN():
                 for i in range(len(buff_actions) // test_bs):
                     batch_actions = buff_actions[test_bs * i:test_bs * (i + 1)]
                     batch_states = buff_states[test_bs * i:test_bs * (i + 1)]
-                    _, test_accur = sess.run([self.optimizer, self.accuracy], \
+                    test_accur = sess.run(self.accuracy, \
                                              feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
                     accur_list.append(test_accur)
                 test_accuracy_ran = np.mean(accur_list)
@@ -309,7 +303,7 @@ def main():
     if env is None:
         action_size = 8 if action_type=='2D' else 10
 
-    data_path = 'data/npy_data' # '/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
+    data_path = 'data/npy_data' #'data/processed_data' #'data/npy_data' #'/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
     model = SimpleCNN(task=task, action_size=action_size)
     model.set_datapath(data_path, data_type='npy')
     model.set_env(env)
