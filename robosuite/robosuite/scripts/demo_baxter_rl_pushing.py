@@ -428,7 +428,7 @@ class BaxterEnv():
 
 
 def check_stucked(arm_euler):
-    print(np.array(arm_euler) / np.pi)
+    # print(np.array(arm_euler) / np.pi)
     check1 = arm_euler[0] % np.pi < 0.02 or np.pi - arm_euler[0] % np.pi < 0.02
     check2 = arm_euler[1] % np.pi < 0.02 or np.pi - arm_euler[1] % np.pi < 0.02
     return not (check1 and check2)

@@ -142,7 +142,7 @@ class SimpleCNN():
                 step_count += 1
                 action = sess.run(self.q_action, feed_dict={self.s_t: [obs]})
                 obs, reward, done, _ = self.env.step(action)
-                print('action: %d / reward: %.2f' % (action, reward))
+                # print('action: %d / reward: %.2f' % (action, reward))
                 # print(step_count, 'steps \t action: ', action, '\t reward: ', reward)
                 cumulative_reward += reward
 
