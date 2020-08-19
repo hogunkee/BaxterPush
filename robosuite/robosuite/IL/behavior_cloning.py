@@ -209,17 +209,16 @@ class SimpleCNN():
                 pkl_action = self.a_list[-2]
                 pkl_state = self.s_list[-2]
                 assert pkl_action[-5:] == pkl_state[-5:]
-                buff_actions = load_data(pkl_action)
-                buff_states = load_data(pkl_state)
-                assert len(buff_actions) == len(buff_states)
-                buff_states = np.clip(buff_states, 0.0, 5.0)
+                test_buff_actions = load_data(pkl_action)
+                test_buff_states = load_data(pkl_state)
+                assert len(test_buff_actions) == len(test_buff_states)
+                test_buff_states = np.clip(test_buff_states, 0.0, 5.0)
 
                 accur_list = []
-                for i in range(len(buff_actions)//test_bs):
-                    batch_actions = buff_actions[test_bs * i:test_bs * (i + 1)]
-                    batch_states = buff_states[test_bs * i:test_bs * (i + 1)]
-                    test_accur = sess.run(self.accuracy, \
-                                            feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
+                for i in range(len(test_buff_actions)//test_bs):
+                    batch_actions = test_buff_actions[test_bs * i:test_bs * (i + 1)]
+                    batch_states = test_buff_states[test_bs * i:test_bs * (i + 1)]
+                    test_accur = sess.run(self.accuracy, feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
                     accur_list.append(test_accur)
                 test_accuracy_fix = np.mean(accur_list)
                 test_accuracy = test_accuracy_fix
@@ -228,17 +227,16 @@ class SimpleCNN():
                 pkl_action = self.a_list[-1]
                 pkl_state = self.s_list[-1]
                 assert pkl_action[-5:] == pkl_state[-5:]
-                buff_actions = load_data(pkl_action)
-                buff_states = load_data(pkl_state)
-                assert len(buff_actions) == len(buff_states)
-                buff_states = np.clip(buff_states, 0.0, 5.0)
+                test_buff_actions = load_data(pkl_action)
+                test_buff_states = load_data(pkl_state)
+                assert len(test_buff_actions) == len(test_buff_states)
+                test_buff_states = np.clip(test_buff_states, 0.0, 5.0)
 
                 accur_list = []
-                for i in range(len(buff_actions) // test_bs):
-                    batch_actions = buff_actions[test_bs * i:test_bs * (i + 1)]
-                    batch_states = buff_states[test_bs * i:test_bs * (i + 1)]
-                    test_accur = sess.run(self.accuracy, \
-                                             feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
+                for i in range(len(test_buff_actions) // test_bs):
+                    batch_actions = test_buff_actions[test_bs * i:test_bs * (i + 1)]
+                    batch_states = test_buff_states[test_bs * i:test_bs * (i + 1)]
+                    test_accur = sess.run(self.accuracy, feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
                     accur_list.append(test_accur)
                 test_accuracy_ran = np.mean(accur_list)
 
