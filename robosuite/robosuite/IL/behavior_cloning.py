@@ -27,12 +27,12 @@ class SimpleCNN():
         self.screen_channel = 4
 
         self.data_path = None
-        self.num_epochs = 100
-        self.batch_size = 250 #128
-        self.lr = 1e-3
+        self.num_epochs = 50 #100
+        self.batch_size = 125 #128
+        self.lr = 1e-4
         self.loss_type = 'l2' # 'l2' or 'ce'
         self.test_freq = 1
-        self.eval_freq = 5
+        self.eval_freq = 2
         self.num_test_ep = 5
         self.env = None
 
@@ -140,10 +140,10 @@ class SimpleCNN():
             done = False
             cumulative_reward = 0.0
             step_count = 0
-
             while not done:
                 step_count += 1
-                action = sess.run(self.q_action, feed_dict={self.s_t: [obs]})
+                clipped_obs = np.clip(obs, 0.0, 5.0)
+                action = sess.run(self.q_action, feed_dict={self.s_t: [clipped_obs]})
                 obs, reward, done, _ = self.env.step(action)
                 # print('action: %d / reward: %.2f' % (action, reward))
                 # print(step_count, 'steps \t action: ', action, '\t reward: ', reward)
@@ -176,9 +176,9 @@ class SimpleCNN():
         print('Training starts..')
         bs = self.batch_size
         for epoch in range(self.num_epochs):
-            if epoch==40:
+            if epoch==10:
                 self.lr /= 10.0
-            elif epoch==70:
+            elif epoch==20:
                 self.lr /= 10.0
 
             epoch_cost = []
@@ -191,9 +191,9 @@ class SimpleCNN():
                 buff_states = load_data(pkl_state)
                 assert len(buff_actions) == len(buff_states)
 
-                # shuffler = np.random.permutation(len(buff_actions))
-                # buff_actions = buff_actions[shuffler]
-                # buff_states = buff_states[shuffler]
+                shuffler = np.random.permutation(len(buff_actions))
+                buff_actions = buff_actions[shuffler]
+                buff_states = buff_states[shuffler]
                 buff_states = np.clip(buff_states, 0.0, 5.0)
 
                 for i in range(len(buff_actions)//bs):
@@ -268,7 +268,7 @@ def main():
     action_type = '2D' # '2D' / '3D'
     random_spawn = False # robot arm fixed init_pos while training BC Reach model
 
-    render = True
+    render = False #True
     eval = True
     screen_width = 192 #264
     screen_height = 192 #64
@@ -301,9 +301,9 @@ def main():
     if env is None:
         action_size = 8 if action_type=='2D' else 10
 
-    data_path = 'data/npy_data' #'data/processed_data' #'data/npy_data' #'/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
+    data_path = 'data/processed_data' #'data/npy_data' #'/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
     model = SimpleCNN(task=task, action_size=action_size)
-    model.set_datapath(data_path, data_type='npy')
+    model.set_datapath(data_path, data_type='pkl')
     model.set_env(env)
 
     gpu_config = tf.ConfigProto()
