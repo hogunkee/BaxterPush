@@ -4,6 +4,7 @@ import os
 import sys
 import pickle
 import time
+from matplotlib import pyplot as plt
 
 FILE_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(FILE_PATH, '../..'))
@@ -109,6 +110,8 @@ class SimpleCNN():
             self.correct_prediction = tf.equal(self.q_action, self.a_true)
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))
 
+    def set_env(self, env):
+        self.env = env
 
     def load_pkl(self, pkl_file):
         with open(os.path.join(self.data_path, pkl_file), 'rb') as f:
@@ -143,6 +146,14 @@ class SimpleCNN():
             while not done:
                 step_count += 1
                 clipped_obs = np.clip(obs, 0.0, 5.0)
+
+                # ## visualization ##
+                # plt.imshow(obs[0])
+                # plt.show()
+                # plt.imshow(obs[1])
+                # plt.show()
+                # ##
+
                 action = sess.run(self.q_action, feed_dict={self.s_t: [clipped_obs]})
                 obs, reward, done, _ = self.env.step(action)
                 # print('action: %d / reward: %.2f' % (action, reward))
@@ -158,9 +169,6 @@ class SimpleCNN():
         print(success_log)
         print('success rate?:', np.mean(success_log))
         return np.mean(success_log)
-
-    def set_env(self, env):
-        self.env = env
 
     def train(self, sess):
         if self.data_type=='pkl':

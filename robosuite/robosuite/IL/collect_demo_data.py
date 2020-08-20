@@ -15,11 +15,8 @@ flags.DEFINE_integer('random_spawn', 0, 'robot arm random pos or not (only for R
 flags.DEFINE_integer('save_data', 1, 'save data or not')
 flags.DEFINE_integer('max_buff', 500, 'number of steps saved in one data file.')
 
-flags.DEFINE_string('model_type', 'greedy', 'greedy / bc')
-flags.DEFINE_string('model_name', 'reach_0811_191540', 'name of the trained BC model')
-
 FLAGS = flags.FLAGS
-using_feature = (FLAGS.use_feature==1)
+using_feature = bool(FLAGS.use_feature)
 if using_feature:
     print('This agent will use feature-based states..!!')
 else:
@@ -32,17 +29,11 @@ task = FLAGS.task
 action_type = FLAGS.action_type
 random_spawn = bool(FLAGS.random_spawn)
 
-if FLAGS.model_type=='bc':
-    render = True
-    save_data = False
-    print_on = True
-    assert FLAGS.model_name is not None
-
 
 # camera resolution
 screen_width = 192 #64
 screen_height = 192 #64
-crop = 128
+crop = 128 #None
 
 # Path which data will be saved in.
 save_name = os.path.join(FILE_PATH, 'data')
@@ -71,11 +62,7 @@ def main():
     env = IKWrapper(env)
     env = BaxterEnv(env, task=task, render=render, using_feature=using_feature, random_spawn=random_spawn, rgbd=True, action_type=action_type)
 
-    if FLAGS.model_type=='greedy':
-        agent = GreedyAgent(env)
-    elif FLAGS.model_type=='bc':
-        trained_model = SimpleCNN(task, env.action_size, model_name=FLAGS.model_name)
-        agent = BCAgent(trained_model)
+    agent = GreedyAgent(env)
 
     if not os.path.exists(save_name) and save_data:
         os.makedirs(save_name)
@@ -98,7 +85,6 @@ def main():
             step_count += 1
             action = agent.get_action(obs)
             new_obs, reward, done, _ = env.step(action)
-            # total_steps += 1
             if print_on:
                 print('action: %d / reward: %.2f'%(action, reward))
             # print(step_count, 'steps \t action: ', action, '\t reward: ', reward)
@@ -108,7 +94,7 @@ def main():
             ep_buff_actions.append(action)
             obs = new_obs
 
-        success = (cumulative_reward >= 90)
+        success = bool(cumulative_reward >= 90)
         success_log.append(int(success))
 
         # recording the trajectories
@@ -134,14 +120,16 @@ def main():
                 for a in range(max(env.action_size, max(buff_actions)+1)):
                     print('%d: %.2f'%(a, list(buff_actions).count(a)/len(buff_actions)))
                 print('---' * 10)
+                print('current success rate:', np.mean(success_log))
 
                 buff_states = buff_states[FLAGS.max_buff:]
                 buff_actions = buff_actions[FLAGS.max_buff:]
                 # buff_states, buff_actions = [], []
 
-        print('success rate?:', np.mean(success_log), success_log[-10:])
+        # print('success rate?:', np.mean(success_log))
         print('Episode %d ends.'%(n+1), '( Total steps:', total_steps, ')')
         print('Ep len:', step_count, 'steps.   Ep reward:', cumulative_reward)
+        print('success:', sum(success_log), ' ,   failure:', len(success_log)-sum(success_log))
         print()
 
 
@@ -241,20 +229,6 @@ class GreedyAgent():
 
     def get_cos(self, vec1, vec2):
         return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
-
-
-class BCAgent():
-    def __init__(self, BC_model):
-        gpu_config = tf.ConfigProto()
-        gpu_config.gpu_options.allow_growth = True
-        self.sess = tf.Session(config=gpu_config)
-        self.model = BC_model
-        self.model.load_model(self.sess)
-
-    def get_action(self, obs):
-        clipped_obs = np.clip(obs, 0.0, 5.0)
-        action = self.sess.run(self.model.q_action, feed_dict={self.model.s_t: [clipped_obs]})
-        return action
 
 
 if __name__=='__main__':

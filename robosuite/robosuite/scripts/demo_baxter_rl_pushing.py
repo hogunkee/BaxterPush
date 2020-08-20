@@ -83,6 +83,7 @@ class BaxterEnv():
             threshold = 0.20
 
         self.env.reset()
+
         init_pos = arena_pos + np.array([spawn_range, spawn_range, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05]) #0.1
         self.goal = arena_pos + np.array([spawn_range, spawn_range, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05])  # 0.1
         spawn_count = 0
@@ -375,7 +376,16 @@ class BaxterEnv():
         return state, reward, done, {}
 
     def get_camera_obs(self):
-        # GET CAMAERA IMAGE
+        # GET CAMERA IMAGE
+        # prepare for rendering #
+        _ = self.env.sim.render(
+            camera_name="birdview",
+            width=10, #self.env.camera_width,
+            height=10, #self.env.camera_height,
+            depth=False #self.env.camera_depth
+        )
+
+        # rl view 1
         camera_obs = self.env.sim.render(
             camera_name="rlview1",
             width=self.env.camera_width,
@@ -396,6 +406,7 @@ class BaxterEnv():
         else:
             im_1 = np.flip(im_rgb, axis=0)
 
+        # rl view 2
         camera_obs = self.env.sim.render(
             camera_name="rlview2",
             width=self.env.camera_width,
@@ -415,7 +426,6 @@ class BaxterEnv():
             im_2 = np.flip(im_2, axis=0)
         else:
             im_2 = np.flip(im_rgb, axis=0)
-
 
         crop = self.env.crop
         if crop is not None:
