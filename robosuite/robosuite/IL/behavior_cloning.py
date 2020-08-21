@@ -33,7 +33,7 @@ class SimpleCNN():
         self.lr = 1e-4
         self.loss_type = 'l2' # 'l2' or 'ce'
         self.test_freq = 1
-        self.eval_freq = 2
+        self.eval_freq = 1
         self.num_test_ep = 5
         self.env = None
 
@@ -184,14 +184,14 @@ class SimpleCNN():
         print('Training starts..')
         bs = self.batch_size
         for epoch in range(self.num_epochs):
-            if epoch==10:
+            if epoch==20:
                 self.lr /= 10.0
-            elif epoch==20:
+            elif epoch==40:
                 self.lr /= 10.0
 
             epoch_cost = []
             epoch_accur = []
-            for p_idx in np.random.permutation(len(self.a_list)-2): # -1
+            for p_idx in np.random.permutation(len(self.a_list)-1): # -1
                 pkl_action = self.a_list[p_idx]
                 pkl_state = self.s_list[p_idx]
                 assert pkl_action[-5:] == pkl_state[-5:]
@@ -213,49 +213,55 @@ class SimpleCNN():
                     epoch_accur.append(accuracy)
 
             if (epoch+1) % self.test_freq == 0:
+                '''
                 # 1. Test for fixed arm pos scenario
                 pkl_action = self.a_list[-2]
                 pkl_state = self.s_list[-2]
                 assert pkl_action[-5:] == pkl_state[-5:]
-                test_buff_actions = load_data(pkl_action)
-                test_buff_states = load_data(pkl_state)
-                assert len(test_buff_actions) == len(test_buff_states)
-                test_buff_states = np.clip(test_buff_states, 0.0, 5.0)
+                buff_actions = load_data(pkl_action)
+                buff_states = load_data(pkl_state)
+                assert len(buff_actions) == len(buff_states)
+                buff_states = np.clip(buff_states, 0.0, 5.0)
 
                 accur_list = []
-                for i in range(len(test_buff_actions)//test_bs):
-                    batch_actions = test_buff_actions[test_bs * i:test_bs * (i + 1)]
-                    batch_states = test_buff_states[test_bs * i:test_bs * (i + 1)]
+                for i in range(len(buff_actions)//test_bs):
+                    batch_actions = buff_actions[test_bs * i:test_bs * (i + 1)]
+                    batch_states = buff_states[test_bs * i:test_bs * (i + 1)]
                     test_accur = sess.run(self.accuracy, feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
                     accur_list.append(test_accur)
                 test_accuracy_fix = np.mean(accur_list)
                 test_accuracy = test_accuracy_fix
+                '''
 
                 # 2. Test for random arm pos scenario
                 pkl_action = self.a_list[-1]
                 pkl_state = self.s_list[-1]
                 assert pkl_action[-5:] == pkl_state[-5:]
-                test_buff_actions = load_data(pkl_action)
-                test_buff_states = load_data(pkl_state)
-                assert len(test_buff_actions) == len(test_buff_states)
-                test_buff_states = np.clip(test_buff_states, 0.0, 5.0)
+                buff_actions = load_data(pkl_action)
+                buff_states = load_data(pkl_state)
+                assert len(buff_actions) == len(buff_states)
+                buff_states = np.clip(buff_states, 0.0, 5.0)
 
                 accur_list = []
-                for i in range(len(test_buff_actions) // test_bs):
-                    batch_actions = test_buff_actions[test_bs * i:test_bs * (i + 1)]
-                    batch_states = test_buff_states[test_bs * i:test_bs * (i + 1)]
+                for i in range(len(buff_actions) // test_bs):
+                    batch_actions = buff_actions[test_bs * i:test_bs * (i + 1)]
+                    batch_states = buff_states[test_bs * i:test_bs * (i + 1)]
                     test_accur = sess.run(self.accuracy, feed_dict={self.s_t: batch_states, self.a_true: batch_actions})
                     accur_list.append(test_accur)
-                test_accuracy_ran = np.mean(accur_list)
+                test_accuracy = np.mean(accur_list)
+                # test_accuracy_ran = np.mean(accur_list)
 
-            writer.add_scalar('train-%s/test_accuracy_fix' % self.task, test_accuracy_fix, epoch+1)
-            writer.add_scalar('train-%s/test_accuracy_ran' % self.task, test_accuracy_ran, epoch + 1)
+            writer.add_scalar('train-%s/test_accuracy_fix' % self.task, test_accuracy, epoch + 1)
+            # writer.add_scalar('train-%s/test_accuracy_fix' % self.task, test_accuracy_fix, epoch+1)
+            # writer.add_scalar('train-%s/test_accuracy_ran' % self.task, test_accuracy_ran, epoch + 1)
             writer.add_scalar('train-%s/train_cost'%self.task, np.mean(epoch_cost), epoch+1)
             writer.add_scalar('train-%s/train_accuracy'%self.task, np.mean(epoch_accur), epoch+1)
             print()
             print('[Epoch %d]' %epoch)
-            print('cost: %.3f\t/   train accur: %.3f\t/   test accur - fix:[%.3f] , ran:[%.3f]' \
-                  %(np.mean(epoch_cost), np.mean(epoch_accur), test_accuracy_fix, test_accuracy_ran))
+            print('cost: %.3f\t/   train accur: %.3f\t/   test accur:[%.3f]' \
+                  % (np.mean(epoch_cost), np.mean(epoch_accur), test_accuracy))
+            # print('cost: %.3f\t/   train accur: %.3f\t/   test accur - fix:[%.3f] , ran:[%.3f]' \
+            #       %(np.mean(epoch_cost), np.mean(epoch_accur), test_accuracy_fix, test_accuracy_ran))
 
             # save the model parameters
             # if np.mean(epoch_accur) > 0.90 and np.mean(epoch_accur) > self.max_accur:
@@ -272,7 +278,7 @@ class SimpleCNN():
 
 
 def main():
-    task = 'reach' # 'reach' / 'push'
+    task = 'push' # 'reach' / 'push'
     action_type = '2D' # '2D' / '3D'
     random_spawn = False # robot arm fixed init_pos while training BC Reach model
 
@@ -309,9 +315,9 @@ def main():
     if env is None:
         action_size = 8 if action_type=='2D' else 10
 
-    data_path = 'data/processed_data' #'data/npy_data' #'/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
+    data_path = 'data/npy_data' #'/media/scarab5/94feeb49-59f6-4be8-bc94-a7efbe148d0e/baxter_push_data'
     model = SimpleCNN(task=task, action_size=action_size)
-    model.set_datapath(data_path, data_type='pkl')
+    model.set_datapath(data_path, data_type='npy')
     model.set_env(env)
 
     gpu_config = tf.ConfigProto()
