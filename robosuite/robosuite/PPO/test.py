@@ -6,13 +6,13 @@ sys.path.append(os.path.join(FILE_PATH, '..', 'scripts'))
 from demo_baxter_rl_pushing import *
 
 
-task = 'reach' #'push'
+task = 'pick' #'push'
 render = True
 using_feature = False #True
 
-screen_width = 64 #96
-screen_height = 64 #96
-crop = None #64 #None
+screen_width = 192 #64 #96
+screen_height = 192 #64 #96
+crop = 128 #None #64 #None
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # GPU is not efficient here
 
@@ -34,7 +34,7 @@ env = robosuite.make(
     crop=crop
 )
 env = IKWrapper(env)
-env = BaxterEnv(env, task=task, render=render, using_feature=using_feature)
+env = BaxterEnv(env, task=task, render=render, using_feature=using_feature, action_type='2D', random_spawn=True)
 
 obs = env.reset()
 for _ in range(1000):

@@ -51,7 +51,7 @@ class BaxterEnv():
             self.action_space = spaces.Discrete(action_size)
             self.action_size = action_size
 
-        self.mov_dist = 0.04 # 0.03
+        self.mov_dist = 0.02 if self.task is 'pick' else 0.04
         self.state = None
         self.grasp = None
         self.init_obj_pos = None
@@ -111,6 +111,7 @@ class BaxterEnv():
         self.obj_id = self.env.obj_body_id['CustomObject_0']
         self.init_obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
         self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
+        self.max_height = self.init_obj_pos[2]
 
         self.target_id = self.env.obj_body_id['CustomObject_1']
         self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
@@ -153,10 +154,10 @@ class BaxterEnv():
 
         elif self.task=='pick':
             if self.random_spawn:
-                self.state[6:8] = self.obj_pos[:2] + self.mov_dist * np.random.uniform(low=-1.0, high=1.0, size=2)
+                self.state[6:8] = self.obj_pos[:2] + 2 * self.mov_dist * np.random.uniform(low=-1.0, high=1.0, size=2)
                 self.state[8] = arena_pos[2] + 0.14 + 0.04 * np.random.uniform(low=-1.0, high=1.0)
             else:
-                self.state[6:8] = self.obj_pos[:2] + self.mov_dist * np.random.uniform(low=-0.5, high=0.5, size=2)
+                self.state[6:8] = self.obj_pos[:2] + self.mov_dist * np.random.uniform(low=-1.0, high=1.0, size=2)
                 self.state[8] = arena_pos[2] + 0.14
 
         ## move robot arm to init pos ##
@@ -255,8 +256,8 @@ class BaxterEnv():
 
         done = False
         reward = 0.0
+        arm_euler = quat2euler(self.env.env._right_hand_quat)
         if self.task == 'reach':
-            arm_euler = quat2euler(self.env.env._right_hand_quat)
             # if stucked == -1 or #1 - np.abs(self.env.env._right_hand_quat[1]) > 0.01:
             if stucked == -1 or check_stucked(arm_euler):
                 reward = 0.0 #np.exp(-1.0 * np.min([np.linalg.norm(self.state[6:9]-self.obj_pos), np.linalg.norm(self.state[6:9]-self.target_pos)]))
@@ -288,7 +289,6 @@ class BaxterEnv():
 
                 vec_target_obj = self.target_pos - self.obj_pos
                 vec_obj_arm = self.obj_pos - self.arm_pos
-                arm_euler = quat2euler(self.env.env._right_hand_quat)
                 # if stucked == -1 or #1 - np.abs(self.env.env._right_hand_quat[1]) > 0.01:
                 if stucked == -1 or check_stucked(arm_euler):
                     reward = 0.0  # -10
@@ -298,7 +298,7 @@ class BaxterEnv():
                     x = np.linalg.norm(vec)
                     x_old = np.linalg.norm(self.pre_vec)
                     d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
-                    d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
+                    # d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
 
                     if np.linalg.norm(vec) < 0.10: #0.05
                         reward = 100
@@ -326,9 +326,6 @@ class BaxterEnv():
                     self.pre_vec = vec
 
             elif self.action_type=='3D':
-                # C1 = 1
-                # C2 = 100
-                arm_euler = quat2euler(self.env.env._right_hand_quat)
                 # if stucked == -1 or #1 - np.abs(self.env.env._right_hand_quat[1]) > 0.01:
                 if stucked == -1 or check_stucked(arm_euler):
                     reward = 0.0 #-10
@@ -363,11 +360,24 @@ class BaxterEnv():
                     self.pre_vec = vec
 
         elif self.task == 'pick':
-            if self.obj_pos[2] - self.init_obj_pos[2] > 0.3:
+            if stucked == -1 or check_stucked(arm_euler):
+                reward = 0.0
                 done = True
-                reward = 100
+                print('episode done. [STUCKED]')
+            else:
+                # check for picking up the block #
+                if self.obj_pos[2] > self.max_height:
+                    if np.abs(self.max_height - self.init_obj_pos[2]) < 0.01:
+                        reward = 50
+                        print('pick success!')
+                    self.max_height = self.obj_pos[2]
+                # check for placing the block #
+                if np.linalg.norm(self.obj_pos[:2] - self.target_pos[:2]) < 0.03 and self.obj_pos[2] - self.target_pos[2] < 0.10:
+                    reward = 50
+                    done = True
+                    print('episode done. [SUCCESS]')
 
-        if self.step_count >= self.max_step:
+        if not done and self.step_count >= self.max_step:
             done = True
             print('Episode stopped. (max step)')
 
