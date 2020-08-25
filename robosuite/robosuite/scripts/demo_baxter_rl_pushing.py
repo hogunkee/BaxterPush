@@ -100,27 +100,6 @@ class BaxterEnv():
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(random_quat()))
         # self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
-        if self.action_type=='2D':
-            arena_pos +  + np.array([0.0, 0.0, 0.05])
-            if self.task=='reach':
-                if self.random_spawn:
-                    self.state[6:9] = arena_pos + np.random.uniform(low=-1.0, high=1.0, size=3) * np.array([spawn_range, spawn_range, 0.0]) \
-                                      + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.08])
-                else:
-                    self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.085]) # 0.085
-            elif self.task=='push':
-                self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.075])
-
-        elif self.action_type=='3D':
-            if self.task=='reach':
-                if self.random_spawn:
-                    self.state[6:9] = arena_pos + np.random.uniform(low=-1.0, high=1.0, size=3) * np.array([spawn_range, spawn_range, 0.0])\
-                                      + np.array([0.0, 0.0, 0.16])  # 0.16
-                else:
-                    self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16])
-            elif self.task=='push':
-                self.state[6:9] = arena_pos + np.array([0.0, 0.0, 0.16])
-
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(random_quat()))
         # self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
@@ -146,13 +125,37 @@ class BaxterEnv():
         self.target_id = self.env.obj_body_id['CustomObject_1']
         self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
         self.pre_vec = self.target_pos - self.obj_pos
-        # self.pre_target_pos = self.target_pos.copy()
+        # self.pre_target_pos = self.target_pos.copy
 
-        if self.task == 'push':
-            ## set the robot arm next to the block ##
+        ## set robot init pos ##
+        if self.task=='reach':
+            if self.action_type=='2D':
+                if self.random_spawn:
+                    self.state[6:9] = arena_pos + np.random.uniform(low=-1.0, high=1.0, size=3) * \
+                                      np.array([spawn_range, spawn_range, 0.0]) + \
+                                      np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.08])
+                else:
+                    self.state[8] = arena_pos[2] + np.random.uniform(low=0.47, high=1.0) * 0.085
+                    # self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array(
+                    #     [0.0, 0.0, 0.085])  # 0.085
+            elif self.action_type=='3D':
+                self.state[8] = arena_pos[2] + 0.16
+                if self.random_spawn:
+                    self.state[6:8] = arena_pos[:2] + np.random.uniform(low=-1.0, high=1.0, size=2) * \
+                                      np.array([spawn_range, spawn_range])
+
+        elif self.task=='push':
             align_direction = self.pre_vec[:2] / np.linalg.norm(self.pre_vec[:2])
             self.state[6:8] = self.obj_pos[:2] - 0.08 * align_direction
+            if self.action_type == '2D':
+                self.state[8] = arena_pos[2] + np.random.uniform(low=0.47, high=1.0) * 0.075
+            elif self.action_type == '3D':
+                self.state[8] = arena_pos[2] + 0.16
 
+        elif self.task=='pick':
+            pass
+
+        ## move robot arm to init pos ##
         stucked = move_to_pos(self.env, [0.4, 0.6, 1.0], [0.4, -0.6, 1.0], arm='both', level=1.0, render=self.render)
         if self.task == 'push':
             stucked = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9] + np.array([0., 0., 0.1]), self.state[9:12],
