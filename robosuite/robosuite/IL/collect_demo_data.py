@@ -225,6 +225,9 @@ class GreedyAgent():
                         next_cos_list = [self.get_cos(vec_target_obj[:2], w) for w in next_obj_arm]
                         action = np.argmax(next_cos_list)
 
+        elif self.task == 'pick':
+            action = 9
+
         return action
 
     def get_cos(self, vec1, vec2):

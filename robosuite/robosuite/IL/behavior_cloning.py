@@ -28,13 +28,13 @@ class SimpleCNN():
         self.screen_channel = 4
 
         self.data_path = None
-        self.num_epochs = 50 #100
+        self.num_epochs = 200 #100
         self.batch_size = 125 #128
         self.lr = 1e-4
         self.loss_type = 'l2' # 'l2' or 'ce'
         self.test_freq = 1
-        self.eval_freq = 1
-        self.num_test_ep = 5
+        self.eval_freq = 5
+        self.num_test_ep = 10 #10
         self.env = None
 
         self.dueling = False
@@ -186,7 +186,7 @@ class SimpleCNN():
         for epoch in range(self.num_epochs):
             if epoch==20:
                 self.lr /= 10.0
-            elif epoch==40:
+            elif epoch==50:
                 self.lr /= 10.0
 
             epoch_cost = []
@@ -251,6 +251,7 @@ class SimpleCNN():
                 test_accuracy = np.mean(accur_list)
                 # test_accuracy_ran = np.mean(accur_list)
 
+            writer.add_scalar('train-%s/test_accuracy' % self.task, test_accuracy, epoch + 1)
             writer.add_scalar('train-%s/test_accuracy_fix' % self.task, test_accuracy, epoch + 1)
             # writer.add_scalar('train-%s/test_accuracy_fix' % self.task, test_accuracy_fix, epoch+1)
             # writer.add_scalar('train-%s/test_accuracy_ran' % self.task, test_accuracy_ran, epoch + 1)

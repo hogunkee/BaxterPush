@@ -93,74 +93,78 @@ class BaxterEnv():
                         np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0.0, 0.0, 0.05])  # 0.025
             if spawn_count%10 == 0:
                 init_pos = arena_pos + np.array([spawn_range, spawn_range, 0.0]) * np.random.uniform(low=-1.0, high=1.0,size=3) + np.array([0.0, 0.0, 0.05])
-        ## spawn at fixed position ##
-        # init_pos = arena_pos + np.array([0.15, 0.10, 0.0]) + np.array([0.0, 0.0, 0.05])
-        # self.goal = arena_pos + np.array([-0.05, -0.15, 0.0]) + np.array([0.0, 0.0, 0.05])  # 0.025
 
         self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
-        self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(random_quat()))
-        # self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
         self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
-        self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(random_quat()))
-        # self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
+        if self.task=='pick':
+            self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
+            self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
+        else:
+            self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(random_quat()))
+            self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(random_quat()))
+
         target = self.env.model.worldbody.find("./body[@name='target']")
         target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
 
-        # if self.task == 'push' or self.task == 'pick':
-        #     self.state[6:9] = init_pos + np.array([self.mov_dist/2, self.mov_dist/2, 0.0]) * np.random.uniform(low=-1.0, high=1.0, size=3) + np.array([0., 0., 0.06]) #0.06
-
         self.env.reset_sims()
-        # self.env.reset_arms(qpos=INIT_ARM_POS)
-
-        # print('Block init positions:')
-        # print(init_pos)
-        # print(self.goal)
-        # print()
 
         self.obj_id = self.env.obj_body_id['CustomObject_0']
         self.init_obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
         self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
-        # self.pre_obj_pos = self.obj_pos
 
         self.target_id = self.env.obj_body_id['CustomObject_1']
         self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
         self.pre_vec = self.target_pos - self.obj_pos
-        # self.pre_target_pos = self.target_pos.copy
 
         ## set robot init pos ##
         if self.task=='reach':
             if self.action_type=='2D':
+                self.state[8] = arena_pos[2] + 0.08 * np.random.uniform(low=0.47, high=1.0)
                 if self.random_spawn:
-                    self.state[6:9] = arena_pos + np.random.uniform(low=-1.0, high=1.0, size=3) * \
-                                      np.array([spawn_range, spawn_range, 0.0]) + \
-                                      np.random.uniform(low=0.47, high=1.0, size=3) * np.array([0.0, 0.0, 0.08])
+                    self.state[6:8] = arena_pos[:2] + spawn_range * np.random.uniform(low=-1.0, high=1.0, size=2)
                 else:
-                    self.state[8] = arena_pos[2] + np.random.uniform(low=0.47, high=1.0) * 0.085
-                    # self.state[6:9] = arena_pos + np.random.uniform(low=0.47, high=1.0, size=3) * np.array(
-                    #     [0.0, 0.0, 0.085])  # 0.085
+                    self.state[6:8] = arena_pos[:2]
+
             elif self.action_type=='3D':
-                self.state[8] = arena_pos[2] + 0.16
                 if self.random_spawn:
-                    self.state[6:8] = arena_pos[:2] + np.random.uniform(low=-1.0, high=1.0, size=2) * \
-                                      np.array([spawn_range, spawn_range])
+                    self.state[6:8] = arena_pos[:2] + spawn_range * np.random.uniform(low=-1.0, high=1.0, size=2)
+                    self.state[8] = arena_pos[2] + 0.14 + 0.06 * np.random.uniform(low=-1.0, high=1.0)
+                else:
+                    self.state[6:8] = arena_pos[:2]
+                    self.state[8] = arena_pos[2] + 0.14  # 0.16
+                # if self.random_spawn:
+                #     self.state[6:8] = arena_pos[:2] + spawn_range * np.random.uniform(low=-1.0, high=1.0, size=2)
 
         elif self.task=='push':
             align_direction = self.pre_vec[:2] / np.linalg.norm(self.pre_vec[:2])
             self.state[6:8] = self.obj_pos[:2] - 0.08 * align_direction
+
             if self.action_type == '2D':
-                self.state[8] = arena_pos[2] + np.random.uniform(low=0.47, high=1.0) * 0.075
+                if self.random_spawn:
+                    self.state[8] = arena_pos[2] + np.random.uniform(low=0.47, high=1.0) * 0.075
+                else:
+                    self.state[8] = arena_pos[2] + 0.055
+
             elif self.action_type == '3D':
-                self.state[8] = arena_pos[2] + 0.16
+                if self.random_spawn:
+                    self.state[8] = arena_pos[2] + 0.14 + 0.04 * np.random.uniform(low=-1.0, high=1.0)
+                else:
+                    self.state[8] = arena_pos[2] + 0.14
 
         elif self.task=='pick':
-            pass
+            if self.random_spawn:
+                self.state[6:8] = self.obj_pos[:2] + self.mov_dist * np.random.uniform(low=-1.0, high=1.0, size=2)
+                self.state[8] = arena_pos[2] + 0.14 + 0.04 * np.random.uniform(low=-1.0, high=1.0)
+            else:
+                self.state[6:8] = self.obj_pos[:2] + self.mov_dist * np.random.uniform(low=-0.5, high=0.5, size=2)
+                self.state[8] = arena_pos[2] + 0.14
 
         ## move robot arm to init pos ##
-        stucked = move_to_pos(self.env, [0.4, 0.6, 1.0], [0.4, -0.6, 1.0], arm='both', level=1.0, render=self.render)
+        _ = move_to_pos(self.env, [0.4, 0.6, 1.0], [0.4, -0.6, 1.0], arm='both', level=1.0, render=self.render)
         if self.task == 'push':
-            stucked = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9] + np.array([0., 0., 0.1]), self.state[9:12],
+            _ = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9] + np.array([0., 0., 0.1]), self.state[9:12],
                                     arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
-        stucked = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9], self.state[9:12],
+        _ = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9], self.state[9:12],
                                 arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
 
         self.pre_obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
@@ -275,7 +279,7 @@ class BaxterEnv():
                 # elif self.arm_pos[2] > self.env.env.mujoco_arena.bin_abs[2] + 0.18:
                 #     reward = -0.2
                 else:
-                    reward = -0.1
+                    pass # reward = -0.1
 
         elif self.task == 'push':
             if self.action_type=='2D':
@@ -305,19 +309,19 @@ class BaxterEnv():
                         done = True
                     # get away #
                     elif d1 > 0.4:
-                        reward = -5
                         done = True
+                        pass # reward = -5
                     elif d1 > 2 * self.mov_dist:
-                        reward = -0.5
+                        pass # reward = -0.5
                     # moving distance reward #
                     elif x_old - x > 0.01:
                         reward = 2.0 # 100 * (x_old - x)
                     # touching reward #
                     elif np.linalg.norm(self.obj_pos - self.pre_obj_pos) > 0.01:
-                        reward = 1.0
+                        pass # reward = 1.0
                     # step penalty #
                     else:
-                        reward = 0.0
+                        pass # reward = 0.0
 
                     self.pre_vec = vec
 
@@ -342,19 +346,19 @@ class BaxterEnv():
                         print('episode done. [SUCCESS]')
                     # get away #
                     elif d1 > 0.4:
-                        reward = -5
                         done = True
+                        pass # reward = -5
                     elif d1 > 2 * self.mov_dist:
-                        reward = -0.5
+                        pass # reward = -0.5
                     # moving distance reward #
                     elif x_old - x > 0.01:
-                        reward = 2.0 # 100 * (x_old - x)
+                        pass # reward = 2.0 # 100 * (x_old - x)
                     # touching reward #
                     elif np.linalg.norm(self.obj_pos - self.pre_obj_pos) > 0.01:
-                        reward = 1.0
+                        pass # reward = 1.0
                     # step penalty #
                     else:
-                        reward = 0.0
+                        pass # reward = 0.0
 
                     self.pre_vec = vec
 
