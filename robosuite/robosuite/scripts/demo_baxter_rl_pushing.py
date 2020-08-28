@@ -51,7 +51,7 @@ class BaxterEnv():
             self.action_space = spaces.Discrete(action_size)
             self.action_size = action_size
 
-        self.mov_dist = 0.02 if self.task is 'pick' else 0.04
+        self.mov_dist = 0.02 if self.task=='pick' else 0.04
         self.state = None
         self.grasp = None
         self.init_obj_pos = None
@@ -372,7 +372,7 @@ class BaxterEnv():
                         print('pick success!')
                     self.max_height = self.obj_pos[2]
                 # check for placing the block #
-                if np.linalg.norm(self.obj_pos[:2] - self.target_pos[:2]) < 0.03 and self.obj_pos[2] - self.target_pos[2] < 0.10:
+                if np.linalg.norm(self.obj_pos[:2] - self.target_pos[:2]) < self.mov_dist/2 and self.obj_pos[2] - self.target_pos[2] < 0.10:
                     reward = 50
                     done = True
                     print('episode done. [SUCCESS]')

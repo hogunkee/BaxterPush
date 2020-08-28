@@ -226,7 +226,42 @@ class GreedyAgent():
                         action = np.argmax(next_cos_list)
 
         elif self.task == 'pick':
-            action = 9
+            ## check whether picking or placing ##
+            curr_arm_pos = self.env.arm_pos
+            dist = np.linalg.norm(curr_arm_pos[:2] - self.env.obj_pos[:2])
+
+            ## move to Pick ##
+            if dist > mov_dist/2:
+                predicted_distance_list = []
+                for action in range(8):
+                    mov_degree = action * np.pi / 4.0
+                    arm_pos = curr_arm_pos + np.array(
+                        [mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree), 0.0])
+                    predicted_dist = np.linalg.norm(arm_pos - self.env.obj_pos)
+                    predicted_distance_list.append(predicted_dist)
+                action = np.argmin(predicted_distance_list)
+            ## move down ##
+            elif curr_arm_pos[2] - self.env.obj_pos[2] > 0: #mov_dist:
+                action = 9
+            ## Pick ##
+            elif self.env.grasp == 0.0:
+                action = 10
+            ## Place ##
+            else:
+                if np.linalg.norm(self.env.obj_pos[:2] - self.env.target_pos[:2]) > mov_dist/2:
+                    if curr_arm_pos[2] < self.env.target_pos[2] + 0.10:
+                        action = 8
+                    else:
+                        predicted_distance_list = []
+                        for action in range(8):
+                            mov_degree = action * np.pi / 4.0
+                            arm_pos = curr_arm_pos + np.array(
+                                [mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree), 0.0])
+                            predicted_dist = np.linalg.norm(arm_pos - self.env.target_pos)
+                            predicted_distance_list.append(predicted_dist)
+                        action = np.argmin(predicted_distance_list)
+                else:
+                    action = 9
 
         return action
 
