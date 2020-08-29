@@ -279,7 +279,7 @@ class SimpleCNN():
 
 
 def main():
-    task = 'push' # 'reach' / 'push'
+    task = 'pick' # 'reach' / 'push'
     action_type = '2D' # '2D' / '3D'
     random_spawn = False # robot arm fixed init_pos while training BC Reach model
 
