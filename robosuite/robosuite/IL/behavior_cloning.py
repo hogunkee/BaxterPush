@@ -138,6 +138,7 @@ class SimpleCNN():
             return
 
         success_log = []
+        success_log2 = []
         for n in range(self.num_test_ep):
             obs = self.env.reset()
             done = False
@@ -164,10 +165,19 @@ class SimpleCNN():
                 success_log.append(1)
             else:
                 success_log.append(0)
+            if self.task=='pick':
+                if cumulative_reward >= 40:
+                    success_log2.append(1)
+                else:
+                    success_log2.append(0)
             print(step_count, cumulative_reward)
 
         print(success_log)
         print('success rate?:', np.mean(success_log))
+        if self.task=='pick':
+            print('Pick success rate:', np.mean(success_log2))
+            return np.mean(success_log), np.mean(success_log2)
+
         return np.mean(success_log)
 
     def train(self, sess):
@@ -271,8 +281,13 @@ class SimpleCNN():
                 self.max_accur = test_accuracy
             # performance evaluation
             if (epoch+1) % self.eval_freq == 0:
-                success_rate = self.test_agent(sess)
-                writer.add_scalar('train-%s/success_rate' % self.task, success_rate, epoch + 1)
+                if self.task=='pick':
+                    success_rate, success_rate2 = self.test_agent(sess)
+                    writer.add_scalar('train-%s/success_rate' % self.task, success_rate, epoch + 1)
+                    writer.add_scalar('train-%s/pick_success_rate' % self.task, success_rate2, epoch + 1)
+                else:
+                    success_rate = self.test_agent(sess)
+                    writer.add_scalar('train-%s/success_rate' % self.task, success_rate, epoch + 1)
 
         print('Training done!')
         return
