@@ -94,17 +94,34 @@ class BaxterEnv():
             if spawn_count%10 == 0:
                 init_pos = arena_pos + np.array([spawn_range, spawn_range, 0.0]) * np.random.uniform(low=-1.0, high=1.0,size=3) + np.array([0.0, 0.0, 0.05])
 
-        self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
-        self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
-        if self.task=='pick':
-            self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
-            self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
-        else:
-            self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(random_quat()))
-            self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(random_quat()))
+        main_block = self.env.model.worldbody.find("./body[@name='CustomObject_0']")
+        main_block.set("pos", array_to_string(init_pos))
+        target_point = self.env.model.worldbody.find("./body[@name='target']")
+        if self.env.num_objects==2:
+            target_block = self.env.model.worldbody.find("./body[@name='CustomObject_1']")
+            target_block.set("pos", array_to_string(self.goal))
+            target_point.find("./geom[@name='target']").set("rgba", "0 0 0 0")
+            target = target_block
+        elif self.env.num_objects==1:
+            target_point.set("pos", array_to_string(self.goal))
+            target = target_point
 
-        target = self.env.model.worldbody.find("./body[@name='target']")
-        target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
+        # self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
+        # self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
+        if self.task=='pick':
+            main_block.set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
+            # self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
+            # self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
+        else:
+            main_block.set("quat", array_to_string(random_quat()))
+            # self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(random_quat()))
+            # self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(random_quat()))
+
+        # self.env.model.worldbody.find("./body[@name='CustomObject_1']").find("./geom[@name='CustomObject_1']").set("rgba", "0 0 0 0")
+        # target = self.env.model.worldbody.find("./body[@name='target']")
+        # target.set("pos", array_to_string(self.goal))
+        # target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
+
 
         self.env.reset_sims()
 
@@ -113,8 +130,13 @@ class BaxterEnv():
         self.obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
         self.max_height = self.init_obj_pos[2]
 
-        self.target_id = self.env.obj_body_id['CustomObject_1']
-        self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
+        # self.target_id = self.env.obj_body_id['CustomObject_1']
+        # self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
+        if self.env.num_objects==2:
+            self.target_id = self.env.obj_body_id['CustomObject_1']
+            self.target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
+        elif self.env.num_objects==1:
+            self.target_pos = self.goal
         self.pre_vec = self.target_pos - self.obj_pos
 
         ## set robot init pos ##
@@ -169,7 +191,10 @@ class BaxterEnv():
                                 arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
 
         self.pre_obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
-        self.pre_target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
+        if self.env.num_objects==2:
+            self.pre_target_pos = np.copy(self.env.sim.data.body_xpos[self.target_id])
+        elif self.env.num_objects==1:
+            self.pre_target_pos = self.goal
 
         self.arm_pos = self.env._r_eef_xpos
         self.pre_arm_pos = self.arm_pos.copy()
@@ -251,7 +276,10 @@ class BaxterEnv():
         self.obj_pos = self.env.sim.data.body_xpos[self.obj_id]
 
         self.pre_target_pos = self.target_pos.copy()
-        self.target_pos = self.env.sim.data.body_xpos[self.target_id]
+        if self.env.num_objects==2:
+            self.target_pos = self.env.sim.data.body_xpos[self.target_id]
+        elif self.env.num_objects==1:
+            self.target_pos = self.goal
         vec = self.target_pos - self.obj_pos
 
         done = False
