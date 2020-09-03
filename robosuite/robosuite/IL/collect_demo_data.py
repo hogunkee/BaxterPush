@@ -53,7 +53,7 @@ def main():
         use_camera_obs=False,
         use_object_obs=False,
         camera_depth=True,
-        num_objects=2,
+        num_objects=1,
         control_freq=100,
         camera_width=screen_width,
         camera_height=screen_height,
@@ -175,14 +175,17 @@ class GreedyAgent():
 
                 pred_vec_target_obj = vec_target_obj - self.mov_dist * vec_obj_arm / np.linalg.norm(vec_obj_arm)
 
-                # if self.get_cos(vec_target_obj[:2], vec_obj_arm[:2]) > np.cos(np.pi/4): # > 0
-                if self.get_cos(pred_vec_target_obj[:2], vec_obj_arm[:2]) > np.cos(np.pi / 5):  # > 0
+                theta_threshold = np.pi/5 if np.linalg.norm(vec_target_obj[:2])>0.10 else np.pi/3
+                if self.get_cos(pred_vec_target_obj[:2], vec_obj_arm[:2]) > np.cos(theta_threshold):  # > 0
                     action = np.argmax(mov_cos_list)
                 else:
-                    # action = -1
                     next_obj_arm = [vec_obj_arm[:2] - v for v in mov_vec_list]
                     next_cos_list = [self.get_cos(vec_target_obj[:2], w) for w in next_obj_arm]
                     action = np.argmax(next_cos_list)
+                    ## to avoid repetition ##
+                    if (action+4)%8 == np.argmax(mov_cos_list):
+                        next_cos_list[action] = -1.0
+                        action = np.argmax(next_cos_list)
 
             elif self.action_type=='3D':
                 vec_target_obj = self.env.target_pos - self.env.obj_pos
@@ -225,7 +228,31 @@ class GreedyAgent():
                         next_cos_list = [self.get_cos(vec_target_obj[:2], w) for w in next_obj_arm]
                         action = np.argmax(next_cos_list)
 
-        elif self.task == 'pick':
+        elif self.task=='pick':
+            curr_arm_pos = self.env.arm_pos
+            dist = np.linalg.norm(curr_arm_pos[:2] - self.env.obj_pos[:2])
+
+            ## move to Pick ##
+            if dist > mov_dist / 2:
+                predicted_distance_list = []
+                for action in range(8):
+                    mov_degree = action * np.pi / 4.0
+                    arm_pos = curr_arm_pos + np.array(
+                        [mov_dist * np.cos(mov_degree), mov_dist * np.sin(mov_degree), 0.0])
+                    predicted_dist = np.linalg.norm(arm_pos - self.env.obj_pos)
+                    predicted_distance_list.append(predicted_dist)
+                action = np.argmin(predicted_distance_list)
+            ## move down ##
+            elif curr_arm_pos[2] - self.env.obj_pos[2] > 0:  # mov_dist:
+                action = 9
+            ## Pick ##
+            elif self.env.grasp == 0.0:
+                action = 10
+            ## move up ##
+            else:
+                action = 8
+
+        elif self.task == 'picknplace':
             ## check whether picking or placing ##
             curr_arm_pos = self.env.arm_pos
             dist = np.linalg.norm(curr_arm_pos[:2] - self.env.obj_pos[:2])

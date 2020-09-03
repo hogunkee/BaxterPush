@@ -19,7 +19,7 @@ from gym import spaces
 class BaxterEnv():
     def __init__(self, env, task='push', continuous=False, render=True, using_feature=False, random_spawn=False, rgbd=False, print_on=False, action_type='3D'):
         self.env = env
-        self.task = task # 'reach', 'push' or 'pick'
+        self.task = task # 'reach', 'push', 'pick' or 'place'
         self.is_continuous = continuous
         self.rgbd = rgbd
         self.print_on = print_on
@@ -31,7 +31,7 @@ class BaxterEnv():
                 action_dim = 3
             elif task=='push':
                 action_dim = 6
-            elif task=='pick':
+            elif task=='pick' or task=='place':
                 action_dim = 6
             self.action_space = spaces.Box(-1, 1, [action_dim])  # action: [x, y, z, cos_th, sin_th, gripper]
             self.action_dim = action_dim
@@ -48,6 +48,9 @@ class BaxterEnv():
                     action_size = 10 #12
             elif task=='pick':
                 action_size = 12
+            elif task=='place':
+                action_size = 10
+
             self.action_space = spaces.Discrete(action_size)
             self.action_size = action_size
 
@@ -61,7 +64,7 @@ class BaxterEnv():
         self.random_spawn = random_spawn
         self.render = render
         self.using_feature = using_feature
-        self.max_step = 100
+        self.max_step = 50
 
         self.min_reach_dist = None  # for 'reach' task
 
@@ -103,25 +106,26 @@ class BaxterEnv():
             target_point.find("./geom[@name='target']").set("rgba", "0 0 0 0")
             target = target_block
         elif self.env.num_objects==1:
+            self.goal -= np.array([0.0, 0.0, 0.03])
             target_point.set("pos", array_to_string(self.goal))
+            if self.task=='reach':
+                target_point.find("./geom[@name='target']").set("rgba", "0 0 0 0")
             target = target_point
 
         # self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("pos", array_to_string(init_pos))
         # self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("pos", array_to_string(self.goal))
-        if self.task=='pick':
+        if self.task=='pick' or self.task=='place':
             main_block.set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
+            target.set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
             # self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
             # self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
         else:
             main_block.set("quat", array_to_string(random_quat()))
+            target.set("quat", array_to_string(random_quat()))
             # self.env.model.worldbody.find("./body[@name='CustomObject_0']").set("quat", array_to_string(random_quat()))
             # self.env.model.worldbody.find("./body[@name='CustomObject_1']").set("quat", array_to_string(random_quat()))
-
-        # self.env.model.worldbody.find("./body[@name='CustomObject_1']").find("./geom[@name='CustomObject_1']").set("rgba", "0 0 0 0")
-        # target = self.env.model.worldbody.find("./body[@name='target']")
-        # target.set("pos", array_to_string(self.goal))
-        # target.find("./geom[@name='target']").set("rgba", "0 0 0 0")
-
+        if self.env.num_objects==1:
+            target.set("quat", array_to_string(np.array([0.0, 0.0, 0.0, 1.0])))
 
         self.env.reset_sims()
 
@@ -182,12 +186,23 @@ class BaxterEnv():
                 self.state[6:8] = self.obj_pos[:2] + self.mov_dist * np.random.uniform(low=-1.0, high=1.0, size=2)
                 self.state[8] = arena_pos[2] + 0.14
 
+        elif self.task=='place':
+            self.state[6:9] = self.obj_pos + np.array([0.0, 0.0, 0.10])
+
         ## move robot arm to init pos ##
         _ = move_to_pos(self.env, [0.4, 0.6, 1.0], [0.4, -0.6, 1.0], arm='both', level=1.0, render=self.render)
         if self.task == 'push':
             _ = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9] + np.array([0., 0., 0.1]), self.state[9:12],
                                     arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
         _ = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9], self.state[9:12],
+                                arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
+        if self.task=='place':
+            _ = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.obj_pos, self.state[9:12],
+                              arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
+            self.grasp = 1.0
+            _ = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.obj_pos, self.state[9:12],
+                              arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
+            _ = move_to_6Dpos(self.env, self.state[0:3], self.state[3:6], self.state[6:9], self.state[9:12],
                                 arm='both', left_grasp=0.0, right_grasp=self.grasp, level=1.0, render=self.render)
 
         self.pre_obj_pos = np.copy(self.env.sim.data.body_xpos[self.obj_id])
@@ -311,6 +326,7 @@ class BaxterEnv():
                     pass # reward = -0.1
 
         elif self.task == 'push':
+            goal_threshold = 0.10 if self.env.num_objects == 2 else 0.05
             if self.action_type=='2D':
                 def get_cos(vec1, vec2):
                     return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
@@ -328,7 +344,7 @@ class BaxterEnv():
                     d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
                     # d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
 
-                    if np.linalg.norm(vec) < 0.10: #0.05
+                    if np.linalg.norm(vec) < goal_threshold: #0.05
                         reward = 100
                         done = True
                         print('episode done. [SUCCESS]')
@@ -343,7 +359,7 @@ class BaxterEnv():
                         pass # reward = -0.5
                     # moving distance reward #
                     elif x_old - x > 0.01:
-                        reward = 2.0 # 100 * (x_old - x)
+                        pass # reward = 2.0 # 100 * (x_old - x)
                     # touching reward #
                     elif np.linalg.norm(self.obj_pos - self.pre_obj_pos) > 0.01:
                         pass # reward = 1.0
@@ -365,7 +381,7 @@ class BaxterEnv():
                     d1 = np.linalg.norm(self.arm_pos[:2] - self.obj_pos[:2])
                     d1_old = np.linalg.norm(self.pre_arm_pos[:2] - self.pre_obj_pos[:2])
 
-                    if np.linalg.norm(vec) < 0.10: #0.05
+                    if np.linalg.norm(vec) < goal_threshold: #0.05
                         reward = 100
                         done = True
                         print('episode done. [SUCCESS]')
@@ -394,14 +410,20 @@ class BaxterEnv():
                 print('episode done. [STUCKED]')
             else:
                 # check for picking up the block #
-                if self.obj_pos[2] > self.max_height:
-                    if np.abs(self.max_height - self.init_obj_pos[2]) < 0.01:
-                        reward = 50
-                        print('pick success!')
-                    self.max_height = self.obj_pos[2]
+                if self.obj_pos[2] - self.init_obj_pos[2] > self.mov_dist / 2:
+                    reward = 100
+                    done = True
+                    print('episode done. [SUCCESS]')
+
+        elif self.task == 'place':
+            goal_threshold = 0.10 if self.env.num_objects == 2 else 0.04
+            if stucked == -1 or check_stucked(arm_euler):
+                reward = 0.0
+                done = True
+            else:
                 # check for placing the block #
-                if np.linalg.norm(self.obj_pos[:2] - self.target_pos[:2]) < self.mov_dist/2 and self.obj_pos[2] - self.target_pos[2] < 0.10:
-                    reward = 50
+                if np.linalg.norm(self.obj_pos[:2] - self.target_pos[:2]) < self.mov_dist/2 and self.obj_pos[2] - self.target_pos[2] < goal_threshold:
+                    reward = 100
                     done = True
                     print('episode done. [SUCCESS]')
 
@@ -489,13 +511,28 @@ def check_stucked(arm_euler):
     return not (check1 and check2)
 
 def random_quat():
+    yaw, pitch, roll = 2 * np.pi * np.array([np.random.rand(), 0.0, 0.0])
+    cy = np.cos(yaw/2)
+    sy = np.sin(yaw/2)
+    cp = np.cos(pitch/2)
+    sp = np.sin(pitch/2)
+    cr = np.cos(roll/2)
+    sr = np.sin(roll/2)
+    qw = cr * cp * cy + sr * sp * sy
+    qx = sr * cp * cy - cr * sp * sy
+    qy = cr * sp * cy + sr * cp * sy
+    qz = cr * cp * sy - sr * sp * cy
+    q = np.array([qw, qx, qy, qz])
+    return q
+    '''
     rand = np.random.rand(3)
     r1 = np.sqrt(1.0 - rand[0])
     r2 = np.sqrt(rand[0])
     pi2 = np.pi * 2.0
     t1 = pi2 * rand[1]
     t2 = pi2 * rand[2]
-    return np.array((np.sin(t1) * r1, np.cos(t1) * r1, np.sin(t2) * r2, np.cos(t2) * r2), dtype=np.float32)    
+    return np.array((np.sin(t1) * r1, np.cos(t1) * r1, np.sin(t2) * r2, np.cos(t2) * r2), dtype=np.float32)
+    '''
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -517,14 +554,19 @@ if __name__ == "__main__":
         '--test', type=bool, default=False)
     parser.add_argument(
         '--config-file', type=str, default="config_example.yaml")
+    parser.add_argument(
+        '--task', type=str, default="place")
     args = parser.parse_args()
 
     np.random.seed(args.seed)
 
+    screen_width = 192
+    screen_height = 192
+    crop = 128
     env = robosuite.make(
         "BaxterPush",
-        bin_type=args.bin_type,
-        object_type=args.object_type,
+        bin_type='table',
+        object_type='cube',
         ignore_done=True,
         has_renderer=True,
         camera_name="eye_on_right_wrist",
@@ -532,40 +574,34 @@ if __name__ == "__main__":
         use_camera_obs=False,
         use_object_obs=False,
         camera_depth=True,
-        num_objects=args.num_objects,
-        control_freq=100
+        num_objects=2,
+        control_freq=100,
+        camera_width=screen_width,
+        camera_height=screen_height,
+        crop=crop
     )
     env = IKWrapper(env)
 
     render = args.render
+    rl_env = BaxterEnv(env, task=args.task, render=render, using_feature=False, action_type='3D', random_spawn=True)
 
-    cam_offset = np.array([0.05, 0, 0.15855])
-    #cam_offset = np.array([0.05755483, 0.0, 0.16810357])
-    right_arm_camera_id = env.sim.model.camera_name2id("eye_on_right_wrist")
-    left_arm_camera_id = env.sim.model.camera_name2id("eye_on_left_wrist")
-
-    arena_pos = env.env.mujoco_arena.bin_abs
-    init_pos = arena_pos + np.array([0.0, 0.0, 0.3])
-    init_obj_pos = arena_pos + np.array([0.0, 0.0, 0.0])
-    float_pos = arena_pos + np.array([0.0, 0.0, 0.3])
-
-    num_episodes = args.num_episodes
-    num_steps = args.num_steps
-    test = args.test
-    save_num = args.seed
-
-    rl_env = BaxterEnv(env, task='pick', render=render)
-
-    success_count, failure_count, controller_failure = 0, 0, 0
-    for i in  range(num_episodes):
-        state = rl_env.reset()
-        done = False
-        while not done:
-            state, reward, done, _ = rl_env.step(action)
-    '''
-    for i in range(0, num_episodes):
-
+    rl_env.reset()
+    for i in range(100):
+        rl_env.step(np.random.randint(rl_env.action_size))
+    exit()
+    ## test for object center position ##
+    for _idx in range(10):
         rl_env.reset()
-        for j in range(12):
-            state, reward, done, _ = rl_env.step(j)
-    '''
+        for _idx2 in range(2):
+            move_to_6Dpos(env, rl_env.state[0:3], rl_env.state[3:6], rl_env.obj_pos + np.array([0., 0., 0.1]),
+                          rl_env.state[9:12], arm='both', left_grasp=0.0, right_grasp=rl_env.grasp, level=1.0,
+                          render=render)
+            move_to_6Dpos(env, rl_env.state[0:3], rl_env.state[3:6], rl_env.obj_pos + np.array([0., 0., 0.15]),
+                          rl_env.state[9:12], arm='both', left_grasp=0.0, right_grasp=rl_env.grasp, level=1.0,
+                          render=render)
+            move_to_6Dpos(env, rl_env.state[0:3], rl_env.state[3:6], rl_env.goal + np.array([0., 0., 0.1]),
+                          rl_env.state[9:12], arm='both', left_grasp=0.0, right_grasp=rl_env.grasp, level=1.0,
+                          render=render)
+            move_to_6Dpos(env, rl_env.state[0:3], rl_env.state[3:6], rl_env.goal + np.array([0., 0., 0.15]),
+                          rl_env.state[9:12], arm='both', left_grasp=0.0, right_grasp=rl_env.grasp, level=1.0,
+                          render=render)
